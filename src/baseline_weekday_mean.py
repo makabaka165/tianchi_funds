@@ -37,6 +37,7 @@ REDEEM_LATE_MONTH_FACTOR = 1.08
 PURCHASE_LATE_MONTH_START_DAY = 21
 PURCHASE_LATE_MONTH_END_DAY = 29
 PURCHASE_LATE_MONTH_FACTOR = 0.85
+SUNDAY_PURCHASE_FACTOR = 0.92
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -286,6 +287,17 @@ def apply_late_month_purchase_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_sunday_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 6:
+            adjusted.loc[idx] *= SUNDAY_PURCHASE_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -313,6 +325,7 @@ def predict_target(
     adjusted = apply_holiday_adjustment(calibrated, predict_dates, target_col)
     if target_col == "purchase":
         adjusted = apply_late_month_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_sunday_purchase_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
         adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
     return adjusted

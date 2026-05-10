@@ -9,18 +9,18 @@
     "max_bad_day_rate": 0.2
   },
   "stats": {
-    "purchase_relative_error_mean": 0.14173834235777968,
+    "purchase_relative_error_mean": 0.13688638317934554,
     "purchase_relative_error_median": 0.10545808876260049,
     "purchase_relative_error_max": 0.4024946041081134,
-    "purchase_bad_day_rate": 0.0967741935483871,
+    "purchase_bad_day_rate": 0.12903225806451613,
     "redeem_relative_error_mean": 0.15635727098510732,
     "redeem_relative_error_median": 0.12293999980268147,
     "redeem_relative_error_max": 0.43711251222377867,
     "redeem_bad_day_rate": 0.1935483870967742,
-    "weighted_relative_error_mean": 0.14977875310280991,
+    "weighted_relative_error_mean": 0.14759537147251456,
     "weighted_relative_error_median": 0.12893783374081805,
-    "weighted_relative_error_max": 0.3515818438088616,
-    "weighted_proxy_score_mean": 5.339140479437682,
+    "weighted_relative_error_max": 0.3760480953581306,
+    "weighted_proxy_score_mean": 5.45626481562335,
     "weighted_proxy_score_median": 5.7020722086393985,
     "weighted_proxy_score_min": 0.0,
     "bad_day_rate_max": 0.1935483870967742
