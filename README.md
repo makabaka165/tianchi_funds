@@ -95,3 +95,20 @@ output/rolling_validation_summary.json
 ```
 
 当前第二十七版滚动验证整体 `weighted_proxy_score` 为 5.826089，高于第二十六版 5.808184；8 月候选门禁继续通过。6 月赎回误差仍偏高，后续还需要继续提升跨月稳定性。
+
+## 候选搜索
+
+为了减少手工试错，可以先运行只读候选搜索：
+
+```bash
+conda run -n funds-ml python src/search_candidates.py --top 20
+```
+
+脚本会基于当前滚动验证明细扫描单日、星期、日区间和轻量参数候选，输出：
+
+```text
+output/candidate_search_report.csv
+output/candidate_search_report.json
+```
+
+默认只保存排序前 200 条候选；如需完整结果，可添加 `--save-limit 0`。搜索结果只用于排队，最终仍需把候选实装后重新运行基线、8 月评价和滚动验证三脚本。
