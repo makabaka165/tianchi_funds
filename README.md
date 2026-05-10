@@ -70,12 +70,12 @@ output/evaluation_report.json
 
 当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
 
-当前第十八版 6 日赎回修正基线的本地评价：
+当前第十九版 8 日赎回修正基线的本地评价：
 
 ```text
 Purchase relative error mean: 0.127889
-Redeem relative error mean:   0.142559
-Weighted relative error mean: 0.135958
+Redeem relative error mean:   0.138606
+Weighted relative error mean: 0.133784
 Decision: PASS
 ```
 
@@ -94,4 +94,4 @@ output/rolling_validation_2014_05_08.csv
 output/rolling_validation_summary.json
 ```
 
-当前第十八版滚动验证整体 `weighted_proxy_score` 为 5.572572，高于第十七版 5.557224；8 月候选门禁继续通过。6 月赎回误差仍偏高，后续还需要继续提升跨月稳定性。
+当前第十九版滚动验证整体 `weighted_proxy_score` 为 5.606022，高于第十八版 5.572572；8 月候选门禁继续通过。6 月赎回误差仍偏高，后续还需要继续提升跨月稳定性。
