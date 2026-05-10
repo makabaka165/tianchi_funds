@@ -46,6 +46,7 @@ REDEEM_DAY16_FACTOR = 1.23
 REDEEM_DAY18_TO_21_FACTOR = 0.96
 REDEEM_DAY26_FACTOR = 0.86
 THURSDAY_REDEEM_FACTOR = 1.03
+SUNDAY_REDEEM_FACTOR = 0.95
 PURCHASE_LATE_MONTH_START_DAY = 21
 PURCHASE_LATE_MONTH_END_DAY = 29
 PURCHASE_LATE_MONTH_FACTOR = 0.85
@@ -407,6 +408,17 @@ def apply_thursday_redeem_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_sunday_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 6:
+            adjusted.loc[idx] *= SUNDAY_REDEEM_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def apply_late_month_purchase_adjustment(
     predictions: pd.Series,
     predict_dates: pd.Series,
@@ -567,6 +579,7 @@ def predict_target(
         adjusted = apply_day18_to_21_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day26_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_thursday_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_sunday_redeem_adjustment(adjusted, predict_dates)
     return adjusted
 
 
