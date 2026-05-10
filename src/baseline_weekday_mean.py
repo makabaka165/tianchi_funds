@@ -43,6 +43,7 @@ PURCHASE_LATE_MONTH_START_DAY = 21
 PURCHASE_LATE_MONTH_END_DAY = 29
 PURCHASE_LATE_MONTH_FACTOR = 0.85
 SUNDAY_PURCHASE_FACTOR = 0.92
+SATURDAY_PURCHASE_FACTOR = 0.93
 PURCHASE_DAY17_FACTOR = 0.80
 PURCHASE_DAY14_FACTOR = 0.89
 
@@ -339,6 +340,17 @@ def apply_sunday_purchase_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_saturday_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 5:
+            adjusted.loc[idx] *= SATURDAY_PURCHASE_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def apply_day17_purchase_adjustment(
     predictions: pd.Series,
     predict_dates: pd.Series,
@@ -389,6 +401,7 @@ def predict_target(
     if target_col == "purchase":
         adjusted = apply_late_month_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_sunday_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_saturday_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_day17_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_day14_purchase_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
