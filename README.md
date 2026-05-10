@@ -78,3 +78,20 @@ Redeem relative error mean:   0.159858
 Weighted relative error mean: 0.149027
 Decision: PASS
 ```
+
+## 滚动验证
+
+为了避免只适配 2014 年 8 月，可以运行 2014 年 5-8 月滚动验证：
+
+```bash
+conda run -n funds-ml python src/rolling_validate.py
+```
+
+输出：
+
+```text
+output/rolling_validation_2014_05_08.csv
+output/rolling_validation_summary.json
+```
+
+当前滚动验证显示第二版在 8 月通过候选门限，但 6 月赎回误差偏高，说明还需要继续提升跨月稳定性。
