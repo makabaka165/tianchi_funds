@@ -34,6 +34,7 @@ POST_HOLIDAY_REDEEM_FACTOR = 1.50
 REDEEM_LATE_MONTH_START_DAY = 22
 REDEEM_LATE_MONTH_END_DAY = 29
 REDEEM_LATE_MONTH_FACTOR = 1.08
+REDEEM_DAY18_FACTOR = 0.84
 PURCHASE_LATE_MONTH_START_DAY = 21
 PURCHASE_LATE_MONTH_END_DAY = 29
 PURCHASE_LATE_MONTH_FACTOR = 0.85
@@ -276,6 +277,17 @@ def apply_late_month_redeem_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day18_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 18:
+            adjusted.loc[idx] *= REDEEM_DAY18_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def apply_late_month_purchase_adjustment(
     predictions: pd.Series,
     predict_dates: pd.Series,
@@ -341,6 +353,7 @@ def predict_target(
         adjusted = apply_day17_purchase_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
         adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_day18_redeem_adjustment(adjusted, predict_dates)
     return adjusted
 
 
