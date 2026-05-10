@@ -1,0 +1,20 @@
+# Raw competition data is large and should be downloaded/provided locally.
+Purchase Redemption Data/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local environments and editor state
+.venv/
+.env
+.idea/
+.vscode/
+
+# Generated model artifacts
+models/
+*.pkl
+*.joblib
+
+# Keep output submissions/results small and trackable unless they grow large.

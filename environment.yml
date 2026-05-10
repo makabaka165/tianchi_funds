@@ -1,0 +1,17 @@
+name: funds-ml
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - tqdm
+  - pyarrow
+  - lightgbm
+  - xgboost
+  - statsmodels
