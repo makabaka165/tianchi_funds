@@ -19,6 +19,14 @@ VALIDATION_PATH = OUTPUT_DIR / "validation_august_2014.csv"
 
 PURCHASE_CALIBRATION = 0.97
 REDEEM_CALIBRATION = 0.85
+PURCHASE_OPTIMIZED_BLEND = 0.05
+PURCHASE_OPTIMIZED_CONFIG = {
+    "recent_weekday_weight": 0.80,
+    "long_weekday_weight": 0.10,
+    "recent_30_weight": 0.00,
+    "recent_14_weight": 0.10,
+    "calibration": 0.89,
+}
 HOLIDAY_PURCHASE_FACTOR = 0.50
 HOLIDAY_REDEEM_FACTOR = 0.60
 POST_HOLIDAY_PURCHASE_FACTOR = 0.90
@@ -156,8 +164,15 @@ def weekday_window_predict(
     history: pd.DataFrame,
     predict_dates: pd.Series,
     target_col: str,
+    config: dict[str, float] | None = None,
 ) -> pd.Series:
     history = history.sort_values("date").copy()
+    config = config or {
+        "recent_weekday_weight": 0.60,
+        "long_weekday_weight": 0.25,
+        "recent_30_weight": 0.10,
+        "recent_14_weight": 0.05,
+    }
     global_median = history[target_col].tail(30).median()
     recent_14 = history[target_col].tail(14).mean()
     recent_30 = history[target_col].tail(30).mean()
@@ -198,6 +213,14 @@ def apply_calibration(predictions: pd.Series, target_col: str) -> pd.Series:
         raise ValueError(f"Unsupported target column: {target_col}")
 
     calibrated = (predictions.astype(float) * factor).round().clip(lower=0)
+    return calibrated.astype("int64")
+
+
+def apply_config_calibration(
+    predictions: pd.Series,
+    config: dict[str, float],
+) -> pd.Series:
+    calibrated = (predictions.astype(float) * config["calibration"]).round().clip(lower=0)
     return calibrated.astype("int64")
 
 
@@ -242,6 +265,21 @@ def predict_target(
         weekday_window_predict(history, predict_dates, target_col),
         target_col,
     )
+    if target_col == "purchase" and PURCHASE_OPTIMIZED_BLEND > 0:
+        optimized = apply_config_calibration(
+            weekday_window_predict(
+                history,
+                predict_dates,
+                target_col,
+                config=PURCHASE_OPTIMIZED_CONFIG,
+            ),
+            PURCHASE_OPTIMIZED_CONFIG,
+        )
+        calibrated = (
+            PURCHASE_OPTIMIZED_BLEND * optimized.astype(float)
+            + (1 - PURCHASE_OPTIMIZED_BLEND) * calibrated.astype(float)
+        ).round().astype("int64")
+
     return apply_holiday_adjustment(calibrated, predict_dates, target_col)
 
 
