@@ -70,12 +70,12 @@ output/evaluation_report.json
 
 当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
 
-当前第四版申购轻量融合基线的本地评价：
+当前第五版月末前赎回修正基线的本地评价：
 
 ```text
 Purchase relative error mean: 0.135894
-Redeem relative error mean:   0.159858
-Weighted relative error mean: 0.149074
+Redeem relative error mean:   0.156357
+Weighted relative error mean: 0.147149
 Decision: PASS
 ```
 

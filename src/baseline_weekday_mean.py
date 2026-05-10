@@ -31,6 +31,9 @@ HOLIDAY_PURCHASE_FACTOR = 0.50
 HOLIDAY_REDEEM_FACTOR = 0.60
 POST_HOLIDAY_PURCHASE_FACTOR = 0.90
 POST_HOLIDAY_REDEEM_FACTOR = 1.50
+REDEEM_LATE_MONTH_START_DAY = 22
+REDEEM_LATE_MONTH_END_DAY = 29
+REDEEM_LATE_MONTH_FACTOR = 1.08
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -256,6 +259,18 @@ def apply_holiday_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_late_month_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if REDEEM_LATE_MONTH_START_DAY <= day <= REDEEM_LATE_MONTH_END_DAY:
+            adjusted.loc[idx] *= REDEEM_LATE_MONTH_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -280,7 +295,10 @@ def predict_target(
             + (1 - PURCHASE_OPTIMIZED_BLEND) * calibrated.astype(float)
         ).round().astype("int64")
 
-    return apply_holiday_adjustment(calibrated, predict_dates, target_col)
+    adjusted = apply_holiday_adjustment(calibrated, predict_dates, target_col)
+    if target_col == "redeem":
+        adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
+    return adjusted
 
 
 def weighted_relative_error(y_true: pd.Series, y_pred: pd.Series) -> float:
