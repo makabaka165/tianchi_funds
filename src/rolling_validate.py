@@ -10,9 +10,8 @@ import pandas as pd
 from baseline_weekday_mean import (
     DAILY_FEATURES_PATH,
     OUTPUT_DIR,
-    apply_calibration,
     build_daily_features,
-    weekday_window_predict,
+    predict_target,
 )
 from evaluate import official_proxy_score, relative_error
 
@@ -42,14 +41,8 @@ def evaluate_month(features: pd.DataFrame, month: str) -> pd.DataFrame:
         raise ValueError(f"Month {month} does not have enough train/validation data")
 
     valid["validation_month"] = month
-    valid["pred_purchase"] = apply_calibration(
-        weekday_window_predict(train, valid["date"], "purchase"),
-        "purchase",
-    )
-    valid["pred_redeem"] = apply_calibration(
-        weekday_window_predict(train, valid["date"], "redeem"),
-        "redeem",
-    )
+    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase")
+    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem")
     valid["purchase_relative_error"] = relative_error(
         valid["purchase"], valid["pred_purchase"]
     )

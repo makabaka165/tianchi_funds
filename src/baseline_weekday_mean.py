@@ -19,6 +19,18 @@ VALIDATION_PATH = OUTPUT_DIR / "validation_august_2014.csv"
 
 PURCHASE_CALIBRATION = 0.97
 REDEEM_CALIBRATION = 0.85
+HOLIDAY_PURCHASE_FACTOR = 0.50
+HOLIDAY_REDEEM_FACTOR = 0.60
+POST_HOLIDAY_PURCHASE_FACTOR = 0.90
+POST_HOLIDAY_REDEEM_FACTOR = 1.50
+
+HOLIDAY_DATES = {
+    "2014-05-01",
+    "2014-05-02",
+    "2014-05-03",
+    "2014-06-02",
+    "2014-09-08",
+}
 
 
 SUM_COLUMNS = [
@@ -189,6 +201,50 @@ def apply_calibration(predictions: pd.Series, target_col: str) -> pd.Series:
     return calibrated.astype("int64")
 
 
+def apply_holiday_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+    target_col: str,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    holidays = {pd.Timestamp(date) for date in HOLIDAY_DATES}
+
+    for idx, date in predict_dates.items():
+        current_date = pd.Timestamp(date)
+        is_holiday = current_date in holidays
+        is_post_holiday = (
+            current_date - pd.Timedelta(days=1) in holidays
+            and current_date not in holidays
+        )
+
+        if target_col == "purchase":
+            if is_holiday:
+                adjusted.loc[idx] *= HOLIDAY_PURCHASE_FACTOR
+            elif is_post_holiday:
+                adjusted.loc[idx] *= POST_HOLIDAY_PURCHASE_FACTOR
+        elif target_col == "redeem":
+            if is_holiday:
+                adjusted.loc[idx] *= HOLIDAY_REDEEM_FACTOR
+            elif is_post_holiday:
+                adjusted.loc[idx] *= POST_HOLIDAY_REDEEM_FACTOR
+        else:
+            raise ValueError(f"Unsupported target column: {target_col}")
+
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def predict_target(
+    history: pd.DataFrame,
+    predict_dates: pd.Series,
+    target_col: str,
+) -> pd.Series:
+    calibrated = apply_calibration(
+        weekday_window_predict(history, predict_dates, target_col),
+        target_col,
+    )
+    return apply_holiday_adjustment(calibrated, predict_dates, target_col)
+
+
 def weighted_relative_error(y_true: pd.Series, y_pred: pd.Series) -> float:
     denominator = y_true.replace(0, np.nan)
     errors = (y_pred - y_true).abs() / denominator
@@ -201,14 +257,8 @@ def validate_august(features: pd.DataFrame) -> pd.DataFrame:
         (features["date"] >= "2014-08-01") & (features["date"] <= "2014-08-31")
     ].copy()
 
-    valid["pred_purchase"] = apply_calibration(
-        weekday_window_predict(train, valid["date"], "purchase"),
-        "purchase",
-    )
-    valid["pred_redeem"] = apply_calibration(
-        weekday_window_predict(train, valid["date"], "redeem"),
-        "redeem",
-    )
+    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase")
+    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem")
     valid["purchase_relative_error"] = (
         (valid["pred_purchase"] - valid["purchase"]).abs() / valid["purchase"]
     )
@@ -228,14 +278,8 @@ def predict_september(features: pd.DataFrame) -> pd.DataFrame:
         {"date": pd.date_range("2014-09-01", "2014-09-30", freq="D")}
     )
     future = add_calendar_features(future)
-    future["purchase"] = apply_calibration(
-        weekday_window_predict(history, future["date"], "purchase"),
-        "purchase",
-    )
-    future["redeem"] = apply_calibration(
-        weekday_window_predict(history, future["date"], "redeem"),
-        "redeem",
-    )
+    future["purchase"] = predict_target(history, future["date"], "purchase")
+    future["redeem"] = predict_target(history, future["date"], "redeem")
     return future[["report_date", "purchase", "redeem"]]
 
 
