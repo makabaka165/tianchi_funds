@@ -57,6 +57,7 @@ PURCHASE_DAY14_FACTOR = 0.89
 PURCHASE_DAY16_FACTOR = 1.16
 PURCHASE_DAY24_FACTOR = 0.91
 PURCHASE_DAY13_FACTOR = 0.90
+PURCHASE_DAY15_TO_21_FACTOR = 1.03
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -506,6 +507,18 @@ def apply_day13_purchase_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day15_to_21_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 15 <= day <= 21:
+            adjusted.loc[idx] *= PURCHASE_DAY15_TO_21_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -541,6 +554,7 @@ def predict_target(
         adjusted = apply_day16_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_day24_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_day13_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_day15_to_21_purchase_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
         adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day18_redeem_adjustment(adjusted, predict_dates)
