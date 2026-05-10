@@ -53,3 +53,28 @@ conda run -n funds-ml python src/baseline_weekday_mean.py
 ## 当前方法
 
 第一版基线使用按星期分组的历史均值，并结合最近 14 天、30 天均值做兜底。它的目的不是追求最优分数，而是先把数据读取、验证、预测、提交格式跑通。
+
+## 本地评价
+
+运行：
+
+```bash
+conda run -n funds-ml python src/evaluate.py
+```
+
+评价脚本会检查 `output/tc_comp_predict_table.csv` 的提交格式，并使用 2014 年 8 月验证集计算近似官方指标。输出报告保存到：
+
+```text
+output/evaluation_report.json
+```
+
+当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
+
+当前第二版校准基线的本地评价：
+
+```text
+Purchase relative error mean: 0.135789
+Redeem relative error mean:   0.159858
+Weighted relative error mean: 0.149027
+Decision: PASS
+```

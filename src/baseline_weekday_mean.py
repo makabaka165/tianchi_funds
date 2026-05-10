@@ -17,6 +17,9 @@ SUBMISSION_PATH = OUTPUT_DIR / "tc_comp_predict_table.csv"
 DAILY_FEATURES_PATH = OUTPUT_DIR / "daily_features.csv"
 VALIDATION_PATH = OUTPUT_DIR / "validation_august_2014.csv"
 
+PURCHASE_CALIBRATION = 0.97
+REDEEM_CALIBRATION = 0.85
+
 
 SUM_COLUMNS = [
     "tBalance",
@@ -174,6 +177,18 @@ def weekday_window_predict(
     return pd.Series(predictions, index=predict_dates.index, dtype="int64")
 
 
+def apply_calibration(predictions: pd.Series, target_col: str) -> pd.Series:
+    if target_col == "purchase":
+        factor = PURCHASE_CALIBRATION
+    elif target_col == "redeem":
+        factor = REDEEM_CALIBRATION
+    else:
+        raise ValueError(f"Unsupported target column: {target_col}")
+
+    calibrated = (predictions.astype(float) * factor).round().clip(lower=0)
+    return calibrated.astype("int64")
+
+
 def weighted_relative_error(y_true: pd.Series, y_pred: pd.Series) -> float:
     denominator = y_true.replace(0, np.nan)
     errors = (y_pred - y_true).abs() / denominator
@@ -186,8 +201,14 @@ def validate_august(features: pd.DataFrame) -> pd.DataFrame:
         (features["date"] >= "2014-08-01") & (features["date"] <= "2014-08-31")
     ].copy()
 
-    valid["pred_purchase"] = weekday_window_predict(train, valid["date"], "purchase")
-    valid["pred_redeem"] = weekday_window_predict(train, valid["date"], "redeem")
+    valid["pred_purchase"] = apply_calibration(
+        weekday_window_predict(train, valid["date"], "purchase"),
+        "purchase",
+    )
+    valid["pred_redeem"] = apply_calibration(
+        weekday_window_predict(train, valid["date"], "redeem"),
+        "redeem",
+    )
     valid["purchase_relative_error"] = (
         (valid["pred_purchase"] - valid["purchase"]).abs() / valid["purchase"]
     )
@@ -207,8 +228,14 @@ def predict_september(features: pd.DataFrame) -> pd.DataFrame:
         {"date": pd.date_range("2014-09-01", "2014-09-30", freq="D")}
     )
     future = add_calendar_features(future)
-    future["purchase"] = weekday_window_predict(history, future["date"], "purchase")
-    future["redeem"] = weekday_window_predict(history, future["date"], "redeem")
+    future["purchase"] = apply_calibration(
+        weekday_window_predict(history, future["date"], "purchase"),
+        "purchase",
+    )
+    future["redeem"] = apply_calibration(
+        weekday_window_predict(history, future["date"], "redeem"),
+        "redeem",
+    )
     return future[["report_date", "purchase", "redeem"]]
 
 
