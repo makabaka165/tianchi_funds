@@ -4,45 +4,45 @@
       "validation_month": "2014-05",
       "days": 31,
       "purchase_relative_error_mean": 0.14454623938370686,
-      "redeem_relative_error_mean": 0.10555400798255699,
-      "weighted_relative_error_mean": 0.12310051211307446,
-      "weighted_proxy_score_mean": 6.312261280082348,
+      "redeem_relative_error_mean": 0.10306002688702018,
+      "weighted_relative_error_mean": 0.1217288225105292,
+      "weighted_proxy_score_mean": 6.3579842668338555,
       "bad_day_rate_max": 0.16129032258064516
     },
     {
       "validation_month": "2014-06",
       "days": 30,
       "purchase_relative_error_mean": 0.08157694218520165,
-      "redeem_relative_error_mean": 0.2923655098002152,
-      "weighted_relative_error_mean": 0.1975106543734591,
-      "weighted_proxy_score_mean": 4.751810276570909,
+      "redeem_relative_error_mean": 0.2896041880334881,
+      "weighted_relative_error_mean": 0.1959919274017592,
+      "weighted_proxy_score_mean": 4.782269887514241,
       "bad_day_rate_max": 0.4666666666666667
     },
     {
       "validation_month": "2014-07",
       "days": 31,
       "purchase_relative_error_mean": 0.15344128582413785,
-      "redeem_relative_error_mean": 0.13580570078438195,
-      "weighted_relative_error_mean": 0.1437417140522721,
-      "weighted_proxy_score_mean": 5.730493807620109,
+      "redeem_relative_error_mean": 0.13174448900222296,
+      "weighted_relative_error_mean": 0.14150804757208468,
+      "weighted_proxy_score_mean": 5.804949356959689,
       "bad_day_rate_max": 0.12903225806451613
     },
     {
       "validation_month": "2014-08",
       "days": 31,
       "purchase_relative_error_mean": 0.12097950583957064,
-      "redeem_relative_error_mean": 0.1281987063836251,
-      "weighted_relative_error_mean": 0.1249500661388006,
-      "weighted_proxy_score_mean": 6.188324356779942,
+      "redeem_relative_error_mean": 0.13041421121061267,
+      "weighted_relative_error_mean": 0.12616859379364373,
+      "weighted_proxy_score_mean": 6.14770676828517,
       "bad_day_rate_max": 0.16129032258064516
     }
   ],
   "overall": {
     "days": 123,
     "purchase_relative_error_mean": 0.12549013193517014,
-    "redeem_relative_error_mean": 0.16444939970466618,
-    "weighted_relative_error_mean": 0.14691772920839294,
-    "weighted_proxy_score_mean": 5.753803016878713,
+    "redeem_relative_error_mean": 0.1626821640739851,
+    "weighted_relative_error_mean": 0.1459457496115184,
+    "weighted_proxy_score_mean": 5.781284136421687,
     "bad_day_rate_max": 0.2032520325203252,
     "worst_month_by_weighted_error": "2014-06"
   }
