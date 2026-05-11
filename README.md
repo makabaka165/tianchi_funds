@@ -70,12 +70,12 @@ output/evaluation_report.json
 
 当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
 
-当前第三十一版 4 日申购修正基线的本地评价：
+当前第三十二版 16 日申购二次补强基线的本地评价：
 
 ```text
-Purchase relative error mean: 0.119594
+Purchase relative error mean: 0.117775
 Redeem relative error mean:   0.129110
-Weighted relative error mean: 0.124828
+Weighted relative error mean: 0.124009
 Decision: PASS
 ```
 
@@ -94,7 +94,7 @@ output/rolling_validation_2014_05_08.csv
 output/rolling_validation_summary.json
 ```
 
-当前第三十一版滚动验证整体 `weighted_proxy_score` 为 5.905822，高于第三十版 5.888074；8 月候选门禁继续通过。6 月赎回误差仍偏高，后续还需要继续提升跨月稳定性。
+当前第三十二版滚动验证整体 `weighted_proxy_score` 为 5.921070，高于第三十一版 5.905822；8 月候选门禁继续通过。6 月赎回误差仍偏高，后续还需要继续提升跨月稳定性。
 
 ## 候选搜索
 
