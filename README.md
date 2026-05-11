@@ -113,3 +113,22 @@ output/candidate_search_report.json
 ```
 
 默认只保存排序前 200 条候选；如需完整结果，可添加 `--save-limit 0`。搜索结果只用于排队，最终仍需把候选实装后重新运行基线、8 月评价和滚动验证三脚本。
+
+## 论坛经验 ML 对照
+
+`论坛经验/` 中的材料主要来自 Datawhale 金融风控贷款违约分类赛，不是余额宝申购赎回时间序列赛，因此没有直接替换当前方案。已新增一个独立对照脚本：
+
+```bash
+conda run -n funds-ml python src/forum_ml_ensemble.py
+```
+
+脚本借鉴论坛资料中的特征工程、LightGBM/XGBoost/Ridge、加权融合和防过拟合验证思路，生成 ML 单模型、ML 加权融合、规则模型与 ML 的保守融合报告：
+
+```text
+output/forum_ml_model_report.json
+output/forum_ml_summary.json
+output/forum_blend_summary.json
+output/forum_blend_weight_scan.csv
+```
+
+本次对照结论：纯 ML 加权融合 overall proxy 为 4.244502，8 月门禁 FAIL；规则/ML 50/50 融合 overall proxy 为 5.191191，8 月 PASS 但低于当前规则基线；权重扫描中最好的 95% 规则 + 5% ML overall proxy 为 6.037310，也低于当前正式候选 6.075524。因此暂不替换 `output/tc_comp_predict_table.csv`，继续保留第三十五版规则模型作为官网提交文件。
