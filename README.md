@@ -70,13 +70,13 @@ output/evaluation_report.json
 
 当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
 
-当前第三十四版周一申购上调基线的本地评价：
+当前第三十五版连续规则优化基线的本地评价：
 
 ```text
-Purchase relative error mean: 0.112103
-Redeem relative error mean:   0.129110
-Weighted relative error mean: 0.121456
-Weighted proxy score mean:    6.363247
+Purchase relative error mean: 0.108418
+Redeem relative error mean:   0.127333
+Weighted relative error mean: 0.118821
+Weighted proxy score mean:    6.478250
 Decision: PASS
 ```
 
@@ -95,7 +95,7 @@ output/rolling_validation_2014_05_08.csv
 output/rolling_validation_summary.json
 ```
 
-当前第三十四版滚动验证整体 `weighted_proxy_score` 为 5.948866，高于第三十三版 5.935865；8 月候选门禁继续通过。周一申购上调明显改善 8 月，但 6 月和 7 月有小幅回落，仍在当前单月风险线内。
+当前第三十五版滚动验证整体 `weighted_proxy_score` 为 6.075524，高于第三十四版 5.948866；8 月候选门禁继续通过。该版本连续保留多条小规则，整体分数首次稳定超过 6，但仍以本地代理评价为准，官网提交前需要注意固定日号规则的过拟合风险。
 
 ## 候选搜索
 

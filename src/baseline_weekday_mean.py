@@ -50,6 +50,13 @@ SUNDAY_REDEEM_FACTOR = 0.95
 TUESDAY_REDEEM_FACTOR = 1.05
 REDEEM_DAY3_TO_6_FACTOR = 1.03
 REDEEM_DAY14_FACTOR = 0.92
+REDEEM_DAY10_EXTRA_FACTOR = 1.06
+SATURDAY_REDEEM_EXTRA_FACTOR = 0.95
+REDEEM_DAY24_FACTOR = 1.06
+REDEEM_DAY25_TO_27_FACTOR = 0.96
+REDEEM_DAY13_FACTOR = 1.06
+REDEEM_DAY16_TO_17_EXTRA_FACTOR = 1.04
+REDEEM_DAY8_TO_9_EXTRA_FACTOR = 0.96
 PURCHASE_LATE_MONTH_START_DAY = 21
 PURCHASE_LATE_MONTH_END_DAY = 29
 PURCHASE_LATE_MONTH_FACTOR = 0.85
@@ -66,6 +73,11 @@ PURCHASE_DAY4_FACTOR = 0.90
 PURCHASE_DAY16_EXTRA_FACTOR = 1.06
 PURCHASE_DAY18_FACTOR = 0.90
 MONDAY_PURCHASE_FACTOR = 1.06
+THURSDAY_PURCHASE_FACTOR = 1.03
+PURCHASE_DAY7_FACTOR = 0.90
+PURCHASE_DAY3_TO_4_FACTOR = 0.96
+PURCHASE_DAY26_TO_27_FACTOR = 1.04
+SUNDAY_PURCHASE_EXTRA_FACTOR = 0.98
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -460,6 +472,86 @@ def apply_day14_redeem_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day10_redeem_extra_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 10:
+            adjusted.loc[idx] *= REDEEM_DAY10_EXTRA_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_saturday_redeem_extra_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 5:
+            adjusted.loc[idx] *= SATURDAY_REDEEM_EXTRA_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day24_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 24:
+            adjusted.loc[idx] *= REDEEM_DAY24_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day25_to_27_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 25 <= day <= 27:
+            adjusted.loc[idx] *= REDEEM_DAY25_TO_27_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day13_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 13:
+            adjusted.loc[idx] *= REDEEM_DAY13_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day16_to_17_redeem_extra_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 16 <= day <= 17:
+            adjusted.loc[idx] *= REDEEM_DAY16_TO_17_EXTRA_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day8_to_9_redeem_extra_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 8 <= day <= 9:
+            adjusted.loc[idx] *= REDEEM_DAY8_TO_9_EXTRA_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def apply_late_month_purchase_adjustment(
     predictions: pd.Series,
     predict_dates: pd.Series,
@@ -616,6 +708,63 @@ def apply_monday_purchase_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_thursday_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 3:
+            adjusted.loc[idx] *= THURSDAY_PURCHASE_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day7_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 7:
+            adjusted.loc[idx] *= PURCHASE_DAY7_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day3_to_4_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 3 <= day <= 4:
+            adjusted.loc[idx] *= PURCHASE_DAY3_TO_4_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_day26_to_27_purchase_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if 26 <= day <= 27:
+            adjusted.loc[idx] *= PURCHASE_DAY26_TO_27_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_sunday_purchase_extra_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).weekday() == 6:
+            adjusted.loc[idx] *= SUNDAY_PURCHASE_EXTRA_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -656,6 +805,11 @@ def predict_target(
         adjusted = apply_day16_purchase_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_day18_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_monday_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_thursday_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_day7_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_day3_to_4_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_day26_to_27_purchase_adjustment(adjusted, predict_dates)
+        adjusted = apply_sunday_purchase_extra_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
         adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day18_redeem_adjustment(adjusted, predict_dates)
@@ -672,6 +826,13 @@ def predict_target(
         adjusted = apply_tuesday_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day3_to_6_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day14_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_day10_redeem_extra_adjustment(adjusted, predict_dates)
+        adjusted = apply_saturday_redeem_extra_adjustment(adjusted, predict_dates)
+        adjusted = apply_day24_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_day25_to_27_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_day13_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_day16_to_17_redeem_extra_adjustment(adjusted, predict_dates)
+        adjusted = apply_day8_to_9_redeem_extra_adjustment(adjusted, predict_dates)
     return adjusted
 
 
