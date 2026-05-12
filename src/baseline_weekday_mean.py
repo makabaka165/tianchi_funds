@@ -81,6 +81,7 @@ SUNDAY_PURCHASE_EXTRA_FACTOR = 0.98
 PURCHASE_DAY10_FACTOR = 1.06
 PURCHASE_DAY29_FACTOR = 1.03
 PURCHASE_DAY8_FACTOR = 1.04
+REDEEM_DAY30_FACTOR = 1.03
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -801,6 +802,17 @@ def apply_day8_purchase_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day30_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 30:
+            adjusted.loc[idx] *= REDEEM_DAY30_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -872,6 +884,7 @@ def predict_target(
         adjusted = apply_day13_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day16_to_17_redeem_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_day8_to_9_redeem_extra_adjustment(adjusted, predict_dates)
+        adjusted = apply_day30_redeem_adjustment(adjusted, predict_dates)
     return adjusted
 
 
