@@ -19,14 +19,18 @@ VALIDATION_PATH = OUTPUT_DIR / "validation_august_2014.csv"
 
 PURCHASE_CALIBRATION = 0.98
 REDEEM_CALIBRATION = 0.85
-PURCHASE_OPTIMIZED_BLEND = 0.03
+PURCHASE_OPTIMIZED_BLEND = 0.09
 PURCHASE_OPTIMIZED_CONFIG = {
-    "recent_weekday_weight": 0.80,
-    "long_weekday_weight": 0.10,
+    "recent_weekday_weight": 0.86,
+    "long_weekday_weight": 0.04,
     "recent_30_weight": 0.00,
     "recent_14_weight": 0.10,
-    "calibration": 0.89,
+    "calibration": 0.93,
 }
+PURCHASE_OPTIMIZED_SIGNAL_R7_28_THRESHOLD = 0.90
+PURCHASE_OPTIMIZED_SIGNAL_APU7_28_THRESHOLD = 0.90
+PURCHASE_OPTIMIZED_BLEND_ACTIVE = 0.18
+PURCHASE_OPTIMIZED_BLEND_INACTIVE = 0.06
 HOLIDAY_PURCHASE_FACTOR = 0.50
 HOLIDAY_REDEEM_FACTOR = 0.60
 POST_HOLIDAY_PURCHASE_FACTOR = 0.90
@@ -53,7 +57,7 @@ REDEEM_DAY14_FACTOR = 0.92
 REDEEM_DAY10_EXTRA_FACTOR = 1.06
 SATURDAY_REDEEM_EXTRA_FACTOR = 0.95
 REDEEM_DAY24_FACTOR = 1.06
-REDEEM_DAY25_TO_27_FACTOR = 0.96
+REDEEM_DAY25_TO_27_FACTOR = 1.00
 REDEEM_DAY13_FACTOR = 1.06
 REDEEM_DAY16_TO_17_EXTRA_FACTOR = 1.04
 REDEEM_DAY8_TO_9_EXTRA_FACTOR = 0.96
@@ -70,7 +74,7 @@ PURCHASE_DAY24_FACTOR = 0.91
 PURCHASE_DAY13_FACTOR = 0.90
 PURCHASE_DAY15_TO_21_FACTOR = 1.03
 PURCHASE_DAY4_FACTOR = 0.90
-PURCHASE_DAY16_EXTRA_FACTOR = 1.06
+PURCHASE_DAY16_EXTRA_FACTOR = 1.00
 PURCHASE_DAY18_FACTOR = 0.90
 MONDAY_PURCHASE_FACTOR = 1.06
 THURSDAY_PURCHASE_FACTOR = 1.03
@@ -81,7 +85,15 @@ SUNDAY_PURCHASE_EXTRA_FACTOR = 0.98
 PURCHASE_DAY10_FACTOR = 1.06
 PURCHASE_DAY29_FACTOR = 1.03
 PURCHASE_DAY8_FACTOR = 1.04
-REDEEM_DAY30_FACTOR = 1.03
+REDEEM_DAY30_FACTOR = 1.00
+REDEEM_QUARTER_END_LATE_START_DAY = 16
+REDEEM_QUARTER_END_LATE_FACTOR_HIGH = 1.20
+REDEEM_QUARTER_END_LATE_FACTOR_LOW = 1.06
+REDEEM_QUARTER_END_SIGNAL_R14_56_THRESHOLD = 0.98
+REDEEM_RESIDUAL_QUARTER_END_START_DAY = 16
+REDEEM_RESIDUAL_QUARTER_END_UPLIFT = 1.15
+REDEEM_RESIDUAL_SIGNAL_R7_28_THRESHOLD = 1.10
+REDEEM_RESIDUAL_SIGNAL_APU7_28_THRESHOLD = 1.08
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -245,10 +257,10 @@ def weekday_window_predict(
     for date in predict_dates:
         weekday = date.weekday()
         value = (
-            0.60 * weekday_recent.get(weekday, global_median)
-            + 0.25 * weekday_mean.get(weekday, global_median)
-            + 0.10 * recent_30
-            + 0.05 * recent_14
+            config["recent_weekday_weight"] * weekday_recent.get(weekday, global_median)
+            + config["long_weekday_weight"] * weekday_mean.get(weekday, global_median)
+            + config["recent_30_weight"] * recent_30
+            + config["recent_14_weight"] * recent_14
         )
         predictions.append(max(0, int(round(value))))
 
@@ -813,6 +825,70 @@ def apply_day30_redeem_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_quarter_end_late_redeem_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+    history: pd.DataFrame,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    signal = history["redeem"].tail(14).mean() / history["redeem"].tail(56).mean()
+    factor = (
+        REDEEM_QUARTER_END_LATE_FACTOR_HIGH
+        if signal >= REDEEM_QUARTER_END_SIGNAL_R14_56_THRESHOLD
+        else REDEEM_QUARTER_END_LATE_FACTOR_LOW
+    )
+    for idx, date in predict_dates.items():
+        current = pd.Timestamp(date)
+        if current.month in {3, 6, 9, 12} and current.day >= REDEEM_QUARTER_END_LATE_START_DAY:
+            adjusted.loc[idx] *= factor
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def apply_quarter_end_redeem_residual_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+    history: pd.DataFrame,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    r7_28 = history["redeem"].tail(7).mean() / history["redeem"].tail(28).mean()
+    apu7_28 = (
+        history["avg_redeem_per_user"].tail(7).mean()
+        / history["avg_redeem_per_user"].tail(28).mean()
+    )
+    active = (
+        r7_28 >= REDEEM_RESIDUAL_SIGNAL_R7_28_THRESHOLD
+        and apu7_28 >= REDEEM_RESIDUAL_SIGNAL_APU7_28_THRESHOLD
+    )
+    if not active:
+        return adjusted.round().clip(lower=0).astype("int64")
+
+    for idx, date in predict_dates.items():
+        current = pd.Timestamp(date)
+        if (
+            current.month in {3, 6, 9, 12}
+            and current.day >= REDEEM_RESIDUAL_QUARTER_END_START_DAY
+        ):
+            adjusted.loc[idx] *= REDEEM_RESIDUAL_QUARTER_END_UPLIFT
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
+def get_purchase_optimized_blend(history: pd.DataFrame) -> float:
+    purchase_r7_28 = history["purchase"].tail(7).mean() / history["purchase"].tail(28).mean()
+    apu7_28 = (
+        history["avg_purchase_per_user"].tail(7).mean()
+        / history["avg_purchase_per_user"].tail(28).mean()
+    )
+    active = (
+        purchase_r7_28 >= PURCHASE_OPTIMIZED_SIGNAL_R7_28_THRESHOLD
+        and apu7_28 >= PURCHASE_OPTIMIZED_SIGNAL_APU7_28_THRESHOLD
+    )
+    return (
+        PURCHASE_OPTIMIZED_BLEND_ACTIVE
+        if active
+        else PURCHASE_OPTIMIZED_BLEND_INACTIVE
+    )
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -822,7 +898,11 @@ def predict_target(
         weekday_window_predict(history, predict_dates, target_col),
         target_col,
     )
-    if target_col == "purchase" and PURCHASE_OPTIMIZED_BLEND > 0:
+    if target_col == "purchase":
+        purchase_optimized_blend = get_purchase_optimized_blend(history)
+    else:
+        purchase_optimized_blend = 0.0
+    if target_col == "purchase" and purchase_optimized_blend > 0:
         optimized = apply_config_calibration(
             weekday_window_predict(
                 history,
@@ -833,8 +913,8 @@ def predict_target(
             PURCHASE_OPTIMIZED_CONFIG,
         )
         calibrated = (
-            PURCHASE_OPTIMIZED_BLEND * optimized.astype(float)
-            + (1 - PURCHASE_OPTIMIZED_BLEND) * calibrated.astype(float)
+            purchase_optimized_blend * optimized.astype(float)
+            + (1 - purchase_optimized_blend) * calibrated.astype(float)
         ).round().astype("int64")
 
     adjusted = apply_holiday_adjustment(calibrated, predict_dates, target_col)
@@ -885,6 +965,10 @@ def predict_target(
         adjusted = apply_day16_to_17_redeem_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_day8_to_9_redeem_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_day30_redeem_adjustment(adjusted, predict_dates)
+        adjusted = apply_quarter_end_late_redeem_adjustment(adjusted, predict_dates, history)
+        adjusted = apply_quarter_end_redeem_residual_adjustment(
+            adjusted, predict_dates, history
+        )
     return adjusted
 
 
