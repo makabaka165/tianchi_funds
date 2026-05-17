@@ -119,6 +119,8 @@ REDEEM_LOW_VARIANCE_SIGNAL_R7_28_THRESHOLD = 1.10
 REDEEM_LOW_VARIANCE_SIGNAL_APU7_28_THRESHOLD = 1.08
 REDEEM_LOW_VARIANCE_SIGNAL_USERS7_28_THRESHOLD = 1.03
 REDEEM_LOW_VARIANCE_DAY15_FACTOR = 0.94
+REDEEM_LOW_VARIANCE_V2_DAY15_FACTOR = 0.93
+REDEEM_LOW_VARIANCE_V2_DAY16_FACTOR = 0.99
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -959,6 +961,20 @@ def apply_day15_redeem_low_variance_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day15_to_16_redeem_low_variance_v2_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        day = pd.Timestamp(date).day
+        if day == 15:
+            adjusted.loc[idx] *= REDEEM_LOW_VARIANCE_V2_DAY15_FACTOR
+        elif day == 16:
+            adjusted.loc[idx] *= REDEEM_LOW_VARIANCE_V2_DAY16_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -1047,8 +1063,13 @@ def predict_target(
         adjusted = apply_quarter_end_redeem_residual_adjustment(
             adjusted, predict_dates, history
         )
-        if strategy == "redeem_low_variance_v1" and should_apply_redeem_low_variance(history):
-            adjusted = apply_day15_redeem_low_variance_adjustment(adjusted, predict_dates)
+        if should_apply_redeem_low_variance(history):
+            if strategy == "redeem_low_variance_v1":
+                adjusted = apply_day15_redeem_low_variance_adjustment(adjusted, predict_dates)
+            elif strategy == "redeem_low_variance_v2":
+                adjusted = apply_day15_to_16_redeem_low_variance_v2_adjustment(
+                    adjusted, predict_dates
+                )
     return adjusted
 
 
@@ -1101,6 +1122,7 @@ def main() -> None:
             "redeem_compact_month_end",
             "redeem_feature_triggered_month_end",
             "redeem_low_variance_v1",
+            "redeem_low_variance_v2",
         ],
         default="baseline",
         help="Prediction strategy to run.",
