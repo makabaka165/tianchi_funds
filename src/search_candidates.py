@@ -19,11 +19,7 @@ SUBMISSION_PATH = OUTPUT_DIR / "tc_comp_predict_table.csv"
 SEARCH_CSV_PATH = OUTPUT_DIR / "candidate_search_report.csv"
 SEARCH_JSON_PATH = OUTPUT_DIR / "candidate_search_report.json"
 
-REDEEM_DAY17_GRID = [0.98, 1.00, 1.02, 1.04, 1.06]
-REDEEM_DAY30_GRID = [0.96, 1.00, 1.02, 1.04, 1.06, 1.08]
-REDEEM_LATE_MONTH_GRID = [1.04, 1.06, 1.08, 1.10]
-REDEEM_MONTH_END_GRID = [1.02, 1.04, 1.06, 1.08]
-REDEEM_WEEKDAY6_GRID = [0.95, 0.97, 1.03, 1.05]
+REDEEM_DAY26_GRID = [0.88, 0.90, 0.92, 0.94]
 
 
 @dataclass(frozen=True)
@@ -32,6 +28,7 @@ class PostAdjustment:
     target: str
     factor: float
     label: str
+    current_factor: float = 1.0
     day: int | None = None
     weekday: int | None = None
     start_day: int | None = None
@@ -177,6 +174,8 @@ def result_row(
         "overall_proxy": overall["weighted_proxy_score_mean"],
         "overall_delta": overall_delta,
         "overall_weighted_error": overall["weighted_relative_error_mean"],
+        "june_weighted_error": months["2014-06"]["weighted_relative_error_mean"],
+        "july_weighted_error": months["2014-07"]["weighted_relative_error_mean"],
         "august_proxy": august["weighted_proxy_score_mean"],
         "august_weighted_error": august["weighted_relative_error_mean"],
         "august_bad_day_rate_max": august["bad_day_rate_max"],
@@ -194,64 +193,24 @@ def apply_post_adjustment(detail: pd.DataFrame, candidate: PostAdjustment) -> tu
     adjusted = detail.copy()
     mask = candidate.validation_mask(adjusted["date"])
     column = f"pred_{candidate.target}"
+    scale = candidate.factor / candidate.current_factor
     adjusted.loc[mask, column] = (
-        adjusted.loc[mask, column].astype(float) * candidate.factor
+        adjusted.loc[mask, column].astype(float) * scale
     ).round().clip(lower=0).astype("int64")
     return adjusted, int(mask.sum())
 
 
 def generate_post_adjustments() -> list[PostAdjustment]:
     candidates: list[PostAdjustment] = []
-    for factor in REDEEM_DAY17_GRID:
+    for factor in REDEEM_DAY26_GRID:
         candidates.append(
             PostAdjustment(
                 kind="single_day",
                 target="redeem",
                 factor=factor,
-                day=17,
-                label=f"redeem_day17_x{factor:.2f}",
-            )
-        )
-    for factor in REDEEM_DAY30_GRID:
-        candidates.append(
-            PostAdjustment(
-                kind="single_day",
-                target="redeem",
-                factor=factor,
-                day=30,
-                label=f"redeem_day30_x{factor:.2f}",
-            )
-        )
-    for factor in REDEEM_LATE_MONTH_GRID:
-        candidates.append(
-            PostAdjustment(
-                kind="day_range",
-                target="redeem",
-                factor=factor,
-                start_day=22,
-                end_day=29,
-                label=f"redeem_day22_29_x{factor:.2f}",
-            )
-        )
-    for factor in REDEEM_MONTH_END_GRID:
-        candidates.append(
-            PostAdjustment(
-                kind="day_range",
-                target="redeem",
-                factor=factor,
-                start_day=28,
-                end_day=31,
-                label=f"redeem_day28_31_x{factor:.2f}",
-            )
-        )
-    for factor in REDEEM_WEEKDAY6_GRID:
-        candidates.append(
-            PostAdjustment(
-                kind="weekday",
-                target="redeem",
-                factor=factor,
-                weekday=6,
-                label=f"redeem_weekday6_x{factor:.2f}",
+                current_factor=0.86,
+                day=26,
+                label=f"redeem_day26_x{factor:.2f}",
             )
         )
     return candidates
@@ -283,8 +242,16 @@ def run_search(args: argparse.Namespace) -> pd.DataFrame:
 
     results = pd.DataFrame(rows)
     results = results.sort_values(
-        by=["decision", "overall_delta", "max_month_delta"],
-        ascending=[True, False, False],
+        by=[
+            "decision",
+            "overall_weighted_error",
+            "june_weighted_error",
+            "bad_day_rate_max",
+            "august_weighted_error",
+            "july_weighted_error",
+            "factor",
+        ],
+        ascending=[True, True, True, True, True, True, True],
     ).reset_index(drop=True)
     return results
 
