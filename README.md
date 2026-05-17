@@ -1,115 +1,74 @@
 # Tianchi Funds Baseline
 
-余额宝申购赎回预测的第一版可复现实验流程。
+??????????????????????? `codex/redeem-day30-conservative`?????????????????????????? `/home/ecs-user/tianchi_funds` ????
 
-## 环境
+## ?????
 
-推荐使用 Miniforge/conda：
-
-```bash
-conda env create -f environment.yml
-conda activate funds-ml
-```
-
-如果已经创建过环境，可以直接激活：
+????????? conda ???
 
 ```bash
-conda activate funds-ml
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate tianchi_funds
 ```
 
-## 数据
+## ???????
 
-原始数据放在本地目录：
+???? redeem ???
 
 ```text
-Purchase Redemption Data/
+REDEEM_DAY24_FACTOR       = 1.06
+REDEEM_DAY25_TO_27_FACTOR = 1.00
+REDEEM_DAY26_FACTOR       = 0.88
+REDEEM_DAY30_FACTOR       = 1.06
 ```
 
-该目录包含比赛原始 CSV，体积较大，已在 `.gitignore` 中忽略。
-
-## 第一版基线
-
-运行：
-
-```bash
-python src/baseline_weekday_mean.py
-```
-
-如果当前终端没有激活 conda，也可以直接运行：
-
-```bash
-conda run -n funds-ml python src/baseline_weekday_mean.py
-```
-
-脚本会：
-
-- 分块读取 `user_balance_table.csv`
-- 聚合每日申购、赎回及辅助统计
-- 用 2014 年 8 月作为验证集
-- 用历史同星期均值作为第一版基线
-- 预测 2014 年 9 月 30 天结果
-- 输出提交文件到 `output/tc_comp_predict_table.csv`
-
-## 当前方法
-
-第一版基线使用按星期分组的历史均值，并结合最近 14 天、30 天均值做兜底。它的目的不是追求最优分数，而是先把数据读取、验证、预测、提交格式跑通。
-
-## 本地评价
-
-运行：
-
-```bash
-conda run -n funds-ml python src/evaluate.py
-```
-
-评价脚本会检查 `output/tc_comp_predict_table.csv` 的提交格式，并使用 2014 年 8 月验证集计算近似官方指标。输出报告保存到：
+???????? `probe_redeem_day26_088`?
 
 ```text
-output/evaluation_report.json
+2014-08 weighted_relative_error_mean = 0.11724453093435727
+overall weighted_relative_error_mean = 0.12433527645032812
+2014-06 weighted_relative_error_mean = 0.1253116508850119
+2014-07 weighted_relative_error_mean = 0.13292114377844227
+overall bad_day_rate_max             = 0.13821138211382114
+overall weighted_proxy_score_mean    = 6.336818444393132
+2014-08 Decision                     = PASS
 ```
 
-当前门限定义在 `src/evaluate.py` 的 `GateThresholds` 中。只有通过门限的版本才建议作为官网提交候选。
+## ????
 
-当前第三十五版连续规则优化基线的本地评价：
-
-```text
-Purchase relative error mean: 0.108418
-Redeem relative error mean:   0.127333
-Weighted relative error mean: 0.118821
-Weighted proxy score mean:    6.478250
-Decision: PASS
-```
-
-## 滚动验证
-
-为了避免只适配 2014 年 8 月，可以运行 2014 年 5-8 月滚动验证：
+???????????????
 
 ```bash
-conda run -n funds-ml python src/rolling_validate.py
+python src/baseline_weekday_mean.py --strategy baseline --artifact-tag <tag>
+python src/rolling_validate.py --strategy baseline --artifact-tag <tag>
 ```
 
-输出：
+???? fallback ?????
 
 ```text
-output/rolling_validation_2014_05_08.csv
-output/rolling_validation_summary.json
+output/validation_august_2014_probe_redeem_day26_088.csv
+output/rolling_validation_2014_05_08_probe_redeem_day26_088.csv
+output/rolling_validation_summary_probe_redeem_day26_088.json
+output/tc_comp_predict_table_probe_redeem_day26_088.csv
 ```
 
-当前第三十五版滚动验证整体 `weighted_proxy_score` 为 6.075524，高于第三十四版 5.948866；8 月候选门禁继续通过。该版本连续保留多条小规则，整体分数首次稳定超过 6，但仍以本地代理评价为准，官网提交前需要注意固定日号规则的过拟合风险。
+## ??????
 
-## 候选搜索
-
-为了减少手工试错，可以先运行只读候选搜索：
-
-```bash
-conda run -n funds-ml python src/search_candidates.py --top 20
-```
-
-脚本会基于当前滚动验证明细扫描单日、星期、日区间和轻量参数候选，输出：
+??????????????????????????
 
 ```text
-output/candidate_search_report.csv
-output/candidate_search_report.json
+2014-08 weighted_relative_error_mean ????????
+overall weighted_relative_error_mean ????????
+2014-06 weighted_relative_error_mean ????????
+overall bad_day_rate_max             ????????
+2014-08 Decision                     ?? PASS
 ```
 
-默认只保存排序前 200 条候选；如需完整结果，可添加 `--save-limit 0`。搜索结果只用于排队，最终仍需把候选实装后重新运行基线、8 月评价和滚动验证三脚本。
+????????????????? `2014-07 weighted_relative_error_mean`?
+
+## ????
+
+- redeem ??????????????????
+- redeem ?????? / ????????????
+- purchase ????????????????????
+- ?????????????????????????????
