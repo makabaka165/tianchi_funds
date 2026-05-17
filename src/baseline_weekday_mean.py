@@ -115,6 +115,10 @@ REDEEM_RESIDUAL_SIGNAL_APU7_28_THRESHOLD = 1.08
 REDEEM_TRIGGERED_MONTH_END_SIGNAL_R7_28_THRESHOLD = 1.10
 REDEEM_TRIGGERED_MONTH_END_SIGNAL_APU7_28_THRESHOLD = 1.08
 REDEEM_TRIGGERED_MONTH_END_SIGNAL_USERS7_28_THRESHOLD = 1.03
+REDEEM_LOW_VARIANCE_SIGNAL_R7_28_THRESHOLD = 1.10
+REDEEM_LOW_VARIANCE_SIGNAL_APU7_28_THRESHOLD = 1.08
+REDEEM_LOW_VARIANCE_SIGNAL_USERS7_28_THRESHOLD = 1.03
+REDEEM_LOW_VARIANCE_DAY15_FACTOR = 0.94
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -931,6 +935,30 @@ def should_apply_redeem_feature_triggered_month_end(history: pd.DataFrame) -> bo
     )
 
 
+def should_apply_redeem_low_variance(history: pd.DataFrame) -> bool:
+    r7_28 = rolling_mean_ratio(history["redeem"], 7, 28)
+    apu7_28 = rolling_mean_ratio(history["avg_redeem_per_user"], 7, 28)
+    users7_28 = rolling_mean_ratio(history["redeem_users"], 7, 28)
+    return (
+        r7_28 >= REDEEM_LOW_VARIANCE_SIGNAL_R7_28_THRESHOLD
+        and (
+            apu7_28 >= REDEEM_LOW_VARIANCE_SIGNAL_APU7_28_THRESHOLD
+            or users7_28 >= REDEEM_LOW_VARIANCE_SIGNAL_USERS7_28_THRESHOLD
+        )
+    )
+
+
+def apply_day15_redeem_low_variance_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 15:
+            adjusted.loc[idx] *= REDEEM_LOW_VARIANCE_DAY15_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -1019,6 +1047,8 @@ def predict_target(
         adjusted = apply_quarter_end_redeem_residual_adjustment(
             adjusted, predict_dates, history
         )
+        if strategy == "redeem_low_variance_v1" and should_apply_redeem_low_variance(history):
+            adjusted = apply_day15_redeem_low_variance_adjustment(adjusted, predict_dates)
     return adjusted
 
 
@@ -1070,6 +1100,7 @@ def main() -> None:
             "baseline",
             "redeem_compact_month_end",
             "redeem_feature_triggered_month_end",
+            "redeem_low_variance_v1",
         ],
         default="baseline",
         help="Prediction strategy to run.",
