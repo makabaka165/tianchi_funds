@@ -17,4 +17,9 @@ models/
 *.pkl
 *.joblib
 
+# Generated outputs and submissions
+output/
+
 # Keep output submissions/results small and trackable unless they grow large.
+# Private notes and reference material
+论坛经验/

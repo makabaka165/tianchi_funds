@@ -8,14 +8,8 @@ from typing import Any
 
 import pandas as pd
 
-import baseline_weekday_mean as model
-from evaluate import (
-    GateThresholds,
-    check_submission_format,
-    official_proxy_score,
-    relative_error,
-)
-from rolling_validate import DEFAULT_MONTHS, evaluate_month, load_daily_features
+from evaluate import GateThresholds, check_submission_format, official_proxy_score, relative_error
+from rolling_validate import DEFAULT_MONTHS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,54 +19,11 @@ SUBMISSION_PATH = OUTPUT_DIR / "tc_comp_predict_table.csv"
 SEARCH_CSV_PATH = OUTPUT_DIR / "candidate_search_report.csv"
 SEARCH_JSON_PATH = OUTPUT_DIR / "candidate_search_report.json"
 
-PURCHASE_FACTOR_GRID = [
-    0.86,
-    0.88,
-    0.90,
-    0.92,
-    0.94,
-    0.96,
-    0.98,
-    1.02,
-    1.03,
-    1.04,
-    1.06,
-    1.08,
-    1.10,
-    1.12,
-    1.15,
-    1.18,
-    1.20,
-]
-REDEEM_FACTOR_GRID = [
-    0.80,
-    0.84,
-    0.86,
-    0.88,
-    0.90,
-    0.92,
-    0.94,
-    0.95,
-    0.96,
-    0.97,
-    0.98,
-    1.02,
-    1.03,
-    1.04,
-    1.06,
-    1.08,
-    1.10,
-    1.12,
-    1.15,
-    1.18,
-    1.20,
-]
-RANGE_FACTOR_GRID = [0.90, 0.92, 0.94, 0.96, 0.98, 1.02, 1.03, 1.04, 1.06, 1.08, 1.10]
-PARAMETER_GRIDS = {
-    "PURCHASE_CALIBRATION": [0.94, 0.95, 0.96, 0.97, 0.99, 1.00, 1.01],
-    "REDEEM_CALIBRATION": [0.82, 0.83, 0.84, 0.86, 0.87, 0.88],
-    "PURCHASE_OPTIMIZED_BLEND": [0.00, 0.01, 0.02, 0.04, 0.05, 0.06, 0.08],
-}
+REDEEM_DAY17_GRID = [0.98, 1.00, 1.02, 1.04, 1.06]
+REDEEM_DAY30_GRID = [0.96, 1.00, 1.02, 1.04, 1.06, 1.08]
+REDEEM_LATE_MONTH_GRID = [1.04, 1.06, 1.08, 1.10]
+REDEEM_MONTH_END_GRID = [1.02, 1.04, 1.06, 1.08]
+REDEEM_WEEKDAY6_GRID = [0.95, 0.97, 1.03, 1.05]
 
 
 @dataclass(frozen=True)
@@ -164,15 +115,15 @@ def august_gate_failures(
     failures = list(submission_issues)
 
     if august_stats["weighted_relative_error_mean"] > thresholds.max_weighted_relative_error:
-        failures.append("8月 weighted_relative_error_mean 超过门限")
+        failures.append("8月 weighted_relative_error_mean exceeds gate")
     if august_stats["purchase_relative_error_mean"] > thresholds.max_purchase_relative_error:
-        failures.append("8月 purchase_relative_error_mean 超过门限")
+        failures.append("8月 purchase_relative_error_mean exceeds gate")
     if august_stats["redeem_relative_error_mean"] > thresholds.max_redeem_relative_error:
-        failures.append("8月 redeem_relative_error_mean 超过门限")
+        failures.append("8月 redeem_relative_error_mean exceeds gate")
     if august_stats["weighted_proxy_score_mean"] < thresholds.min_weighted_proxy_score:
-        failures.append("8月 weighted_proxy_score_mean 低于门限")
+        failures.append("8月 weighted_proxy_score_mean below gate")
     if august_stats["bad_day_rate_max"] > thresholds.max_bad_day_rate:
-        failures.append("8月 bad_day_rate_max 超过门限")
+        failures.append("8月 bad_day_rate_max exceeds gate")
     return failures
 
 
@@ -181,15 +132,13 @@ def result_row(
     label: str,
     kind: str,
     target: str,
-    factor: float | None,
-    overrides: dict[str, float] | None,
+    factor: float,
     summary: dict[str, Any],
     base_summary: dict[str, Any],
     submission_issues: list[str],
     affected_validation_rows: int,
     affected_submission_dates: str,
     max_month_drop: float,
-    min_overall_delta: float,
 ) -> dict[str, Any]:
     base_months = base_summary["months"]
     months = summary["months"]
@@ -207,10 +156,16 @@ def result_row(
     august = months["2014-08"]
     gate_failures = august_gate_failures(august, submission_issues)
     risk_failures = []
-    if overall_delta <= min_overall_delta:
-        risk_failures.append("overall proxy 未超过当前基线")
+    if overall["weighted_relative_error_mean"] > base_overall["weighted_relative_error_mean"]:
+        risk_failures.append("overall weighted_relative_error_mean worse than baseline")
+    if august["weighted_relative_error_mean"] > base_months["2014-08"]["weighted_relative_error_mean"]:
+        risk_failures.append("8月 weighted_relative_error_mean worse than baseline")
+    if months["2014-06"]["weighted_relative_error_mean"] > base_months["2014-06"]["weighted_relative_error_mean"]:
+        risk_failures.append("2014-06 weighted_relative_error_mean worse than baseline")
+    if overall["bad_day_rate_max"] > base_overall["bad_day_rate_max"]:
+        risk_failures.append("overall bad_day_rate_max worse than baseline")
     if max_month_delta < -max_month_drop:
-        risk_failures.append("单月 proxy 下滑超过风险线")
+        risk_failures.append("monthly proxy drop exceeds risk threshold")
 
     decision = "KEEP_CANDIDATE" if not gate_failures and not risk_failures else "SKIP"
     return {
@@ -219,7 +174,6 @@ def result_row(
         "kind": kind,
         "target": target,
         "factor": factor,
-        "overrides": json.dumps(overrides or {}, sort_keys=True),
         "overall_proxy": overall["weighted_proxy_score_mean"],
         "overall_delta": overall_delta,
         "overall_weighted_error": overall["weighted_relative_error_mean"],
@@ -248,77 +202,58 @@ def apply_post_adjustment(detail: pd.DataFrame, candidate: PostAdjustment) -> tu
 
 def generate_post_adjustments() -> list[PostAdjustment]:
     candidates: list[PostAdjustment] = []
-    for target, factors in [
-        ("purchase", PURCHASE_FACTOR_GRID),
-        ("redeem", REDEEM_FACTOR_GRID),
-    ]:
-        for day in range(1, 32):
-            for factor in factors:
-                candidates.append(
-                    PostAdjustment(
-                        kind="single_day",
-                        target=target,
-                        factor=factor,
-                        day=day,
-                        label=f"{target}_day{day}_x{factor:.2f}",
-                    )
-                )
-        for weekday in range(7):
-            weekday_grid = PURCHASE_FACTOR_GRID if target == "purchase" else REDEEM_FACTOR_GRID
-            for factor in weekday_grid:
-                candidates.append(
-                    PostAdjustment(
-                        kind="weekday",
-                        target=target,
-                        factor=factor,
-                        weekday=weekday,
-                        label=f"{target}_weekday{weekday}_x{factor:.2f}",
-                    )
-                )
-        for window in [2, 3, 4, 7]:
-            for start_day in range(1, 32 - window + 1):
-                end_day = start_day + window - 1
-                for factor in RANGE_FACTOR_GRID:
-                    candidates.append(
-                        PostAdjustment(
-                            kind="day_range",
-                            target=target,
-                            factor=factor,
-                            start_day=start_day,
-                            end_day=end_day,
-                            label=f"{target}_day{start_day}_{end_day}_x{factor:.2f}",
-                        )
-                    )
-    return candidates
-
-
-def evaluate_parameter_candidate(
-    overrides: dict[str, float],
-    months: list[str],
-) -> pd.DataFrame:
-    original = {name: getattr(model, name) for name in overrides}
-    try:
-        for name, value in overrides.items():
-            setattr(model, name, value)
-        features = load_daily_features()
-        return pd.concat(
-            [evaluate_month(features, month) for month in months],
-            ignore_index=True,
+    for factor in REDEEM_DAY17_GRID:
+        candidates.append(
+            PostAdjustment(
+                kind="single_day",
+                target="redeem",
+                factor=factor,
+                day=17,
+                label=f"redeem_day17_x{factor:.2f}",
+            )
         )
-    finally:
-        for name, value in original.items():
-            setattr(model, name, value)
-
-
-def generate_parameter_overrides() -> list[tuple[str, dict[str, float]]]:
-    candidates: list[tuple[str, dict[str, float]]] = []
-    for parameter, values in PARAMETER_GRIDS.items():
-        current = float(getattr(model, parameter))
-        for value in values:
-            if abs(value - current) < 1e-12:
-                continue
-            label = f"param_{parameter}_{value:.2f}"
-            candidates.append((label, {parameter: value}))
+    for factor in REDEEM_DAY30_GRID:
+        candidates.append(
+            PostAdjustment(
+                kind="single_day",
+                target="redeem",
+                factor=factor,
+                day=30,
+                label=f"redeem_day30_x{factor:.2f}",
+            )
+        )
+    for factor in REDEEM_LATE_MONTH_GRID:
+        candidates.append(
+            PostAdjustment(
+                kind="day_range",
+                target="redeem",
+                factor=factor,
+                start_day=22,
+                end_day=29,
+                label=f"redeem_day22_29_x{factor:.2f}",
+            )
+        )
+    for factor in REDEEM_MONTH_END_GRID:
+        candidates.append(
+            PostAdjustment(
+                kind="day_range",
+                target="redeem",
+                factor=factor,
+                start_day=28,
+                end_day=31,
+                label=f"redeem_day28_31_x{factor:.2f}",
+            )
+        )
+    for factor in REDEEM_WEEKDAY6_GRID:
+        candidates.append(
+            PostAdjustment(
+                kind="weekday",
+                target="redeem",
+                factor=factor,
+                weekday=6,
+                label=f"redeem_weekday6_x{factor:.2f}",
+            )
+        )
     return candidates
 
 
@@ -337,37 +272,14 @@ def run_search(args: argparse.Namespace) -> pd.DataFrame:
                 kind=candidate.kind,
                 target=candidate.target,
                 factor=candidate.factor,
-                overrides=None,
                 summary=summary,
                 base_summary=base_summary,
                 submission_issues=submission_issues,
                 affected_validation_rows=affected_rows,
                 affected_submission_dates=candidate.affected_submission_dates(),
                 max_month_drop=args.max_month_drop,
-                min_overall_delta=args.min_overall_delta,
             )
         )
-
-    if not args.skip_parameter_search:
-        for label, overrides in generate_parameter_overrides():
-            detail = evaluate_parameter_candidate(overrides, args.months)
-            summary = summarize_detail(detail)
-            rows.append(
-                result_row(
-                    label=label,
-                    kind="parameter",
-                    target="model",
-                    factor=None,
-                    overrides=overrides,
-                    summary=summary,
-                    base_summary=base_summary,
-                    submission_issues=submission_issues,
-                    affected_validation_rows=len(detail),
-                    affected_submission_dates="20140901-20140930",
-                    max_month_drop=args.max_month_drop,
-                    min_overall_delta=args.min_overall_delta,
-                )
-            )
 
     results = pd.DataFrame(rows)
     results = results.sort_values(
@@ -412,8 +324,7 @@ def print_top(results: pd.DataFrame, top: int) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Search read-only post-adjustment and parameter candidates from the current "
-            "rolling validation baseline."
+            "Search conservative redeem-only candidates from the current rolling validation baseline."
         )
     )
     parser.add_argument("--detail", type=Path, default=ROLLING_DETAIL_PATH)
@@ -427,14 +338,8 @@ def parse_args() -> argparse.Namespace:
         default=200,
         help="Number of sorted rows to save. Use 0 to save the full search result.",
     )
-    parser.add_argument("--max-month-drop", type=float, default=0.05)
-    parser.add_argument("--min-overall-delta", type=float, default=0.0)
+    parser.add_argument("--max-month-drop", type=float, default=0.03)
     parser.add_argument("--months", nargs="+", default=DEFAULT_MONTHS)
-    parser.add_argument(
-        "--skip-parameter-search",
-        action="store_true",
-        help="Only scan post-adjustment candidates from the existing rolling detail file.",
-    )
     return parser.parse_args()
 
 

@@ -12,6 +12,7 @@ from baseline_weekday_mean import (
     OUTPUT_DIR,
     build_daily_features,
     predict_target,
+    resolve_artifact_paths,
 )
 from evaluate import official_proxy_score, relative_error
 
@@ -31,7 +32,11 @@ def load_daily_features(path: Path = DAILY_FEATURES_PATH) -> pd.DataFrame:
     return features.sort_values("date").reset_index(drop=True)
 
 
-def evaluate_month(features: pd.DataFrame, month: str) -> pd.DataFrame:
+def evaluate_month(
+    features: pd.DataFrame,
+    month: str,
+    strategy: str = "baseline",
+) -> pd.DataFrame:
     start = pd.Timestamp(f"{month}-01")
     end = start + pd.offsets.MonthEnd(0)
     train = features[features["date"] < start].copy()
@@ -41,8 +46,8 @@ def evaluate_month(features: pd.DataFrame, month: str) -> pd.DataFrame:
         raise ValueError(f"Month {month} does not have enough train/validation data")
 
     valid["validation_month"] = month
-    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase")
-    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem")
+    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase", strategy)
+    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem", strategy)
     valid["purchase_relative_error"] = relative_error(
         valid["purchase"], valid["pred_purchase"]
     )
@@ -116,24 +121,31 @@ def summarize(detail: pd.DataFrame) -> dict[str, object]:
     }
 
 
-def run_rolling_validation(months: list[str]) -> tuple[pd.DataFrame, dict[str, object]]:
-    features = load_daily_features()
+def run_rolling_validation(
+    months: list[str],
+    strategy: str = "baseline",
+    artifact_tag: str = "",
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    paths = resolve_artifact_paths(artifact_tag)
+    features = load_daily_features(paths.daily_features)
     detail = pd.concat(
-        [evaluate_month(features, month) for month in months],
+        [evaluate_month(features, month, strategy) for month in months],
         ignore_index=True,
     )
     summary = summarize(detail)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
-    detail.to_csv(ROLLING_DETAIL_PATH, index=False, encoding="utf-8")
-    ROLLING_SUMMARY_PATH.write_text(
+    detail_path = ROLLING_DETAIL_PATH if not artifact_tag else OUTPUT_DIR / f"rolling_validation_2014_05_08_{artifact_tag}.csv"
+    summary_path = ROLLING_SUMMARY_PATH if not artifact_tag else OUTPUT_DIR / f"rolling_validation_summary_{artifact_tag}.json"
+    detail.to_csv(detail_path, index=False, encoding="utf-8")
+    summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     return detail, summary
 
 
-def print_summary(summary: dict[str, object]) -> None:
+def print_summary(summary: dict[str, object], artifact_tag: str = "") -> None:
     print("Rolling validation report")
     print("=========================")
     for month in summary["months"]:
@@ -155,8 +167,10 @@ def print_summary(summary: dict[str, object]) -> None:
         "proxy_score={weighted_proxy_score_mean:.6f}".format(**overall)
     )
     print(f"Worst month: {overall['worst_month_by_weighted_error']}")
-    print(f"Saved detail: {ROLLING_DETAIL_PATH}")
-    print(f"Saved summary: {ROLLING_SUMMARY_PATH}")
+    detail_path = ROLLING_DETAIL_PATH if not artifact_tag else OUTPUT_DIR / f"rolling_validation_2014_05_08_{artifact_tag}.csv"
+    summary_path = ROLLING_SUMMARY_PATH if not artifact_tag else OUTPUT_DIR / f"rolling_validation_summary_{artifact_tag}.json"
+    print(f"Saved detail: {detail_path}")
+    print(f"Saved summary: {summary_path}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -169,13 +183,32 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_MONTHS,
         help="Validation months in YYYY-MM format.",
     )
+    parser.add_argument(
+        "--strategy",
+        choices=[
+            "baseline",
+            "redeem_compact_month_end",
+            "redeem_feature_triggered_month_end",
+        ],
+        default="baseline",
+        help="Prediction strategy to evaluate.",
+    )
+    parser.add_argument(
+        "--artifact-tag",
+        default="",
+        help="Optional suffix for rolling output files.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    _, summary = run_rolling_validation(args.months)
-    print_summary(summary)
+    _, summary = run_rolling_validation(
+        args.months,
+        strategy=args.strategy,
+        artifact_tag=args.artifact_tag,
+    )
+    print_summary(summary, artifact_tag=args.artifact_tag)
 
 
 if __name__ == "__main__":

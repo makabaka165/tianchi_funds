@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +18,22 @@ SHIBOR_PATH = DATA_DIR / "mfd_bank_shibor.csv"
 SUBMISSION_PATH = OUTPUT_DIR / "tc_comp_predict_table.csv"
 DAILY_FEATURES_PATH = OUTPUT_DIR / "daily_features.csv"
 VALIDATION_PATH = OUTPUT_DIR / "validation_august_2014.csv"
+
+
+@dataclass(frozen=True)
+class ArtifactPaths:
+    daily_features: Path
+    validation: Path
+    submission: Path
+
+
+def resolve_artifact_paths(tag: str = "") -> ArtifactPaths:
+    suffix = f"_{tag}" if tag else ""
+    return ArtifactPaths(
+        daily_features=OUTPUT_DIR / f"daily_features{suffix}.csv",
+        validation=OUTPUT_DIR / f"validation_august_2014{suffix}.csv",
+        submission=OUTPUT_DIR / f"tc_comp_predict_table{suffix}.csv",
+    )
 
 PURCHASE_CALIBRATION = 0.98
 REDEEM_CALIBRATION = 0.85
@@ -85,7 +103,7 @@ SUNDAY_PURCHASE_EXTRA_FACTOR = 0.98
 PURCHASE_DAY10_FACTOR = 1.06
 PURCHASE_DAY29_FACTOR = 1.03
 PURCHASE_DAY8_FACTOR = 1.04
-REDEEM_DAY30_FACTOR = 1.00
+REDEEM_DAY30_FACTOR = 1.04
 REDEEM_QUARTER_END_LATE_START_DAY = 16
 REDEEM_QUARTER_END_LATE_FACTOR_HIGH = 1.20
 REDEEM_QUARTER_END_LATE_FACTOR_LOW = 1.06
@@ -94,6 +112,9 @@ REDEEM_RESIDUAL_QUARTER_END_START_DAY = 16
 REDEEM_RESIDUAL_QUARTER_END_UPLIFT = 1.15
 REDEEM_RESIDUAL_SIGNAL_R7_28_THRESHOLD = 1.10
 REDEEM_RESIDUAL_SIGNAL_APU7_28_THRESHOLD = 1.08
+REDEEM_TRIGGERED_MONTH_END_SIGNAL_R7_28_THRESHOLD = 1.10
+REDEEM_TRIGGERED_MONTH_END_SIGNAL_APU7_28_THRESHOLD = 1.08
+REDEEM_TRIGGERED_MONTH_END_SIGNAL_USERS7_28_THRESHOLD = 1.03
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -889,10 +910,32 @@ def get_purchase_optimized_blend(history: pd.DataFrame) -> float:
     )
 
 
+def rolling_mean_ratio(series: pd.Series, short_window: int, long_window: int) -> float:
+    short_mean = float(series.tail(short_window).mean())
+    long_mean = float(series.tail(long_window).mean())
+    if pd.isna(long_mean) or long_mean == 0:
+        return 1.0
+    return short_mean / long_mean
+
+
+def should_apply_redeem_feature_triggered_month_end(history: pd.DataFrame) -> bool:
+    r7_28 = rolling_mean_ratio(history["redeem"], 7, 28)
+    apu7_28 = rolling_mean_ratio(history["avg_redeem_per_user"], 7, 28)
+    users7_28 = rolling_mean_ratio(history["redeem_users"], 7, 28)
+    return (
+        r7_28 >= REDEEM_TRIGGERED_MONTH_END_SIGNAL_R7_28_THRESHOLD
+        and (
+            apu7_28 >= REDEEM_TRIGGERED_MONTH_END_SIGNAL_APU7_28_THRESHOLD
+            or users7_28 >= REDEEM_TRIGGERED_MONTH_END_SIGNAL_USERS7_28_THRESHOLD
+        )
+    )
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
     target_col: str,
+    strategy: str = "baseline",
 ) -> pd.Series:
     calibrated = apply_calibration(
         weekday_window_predict(history, predict_dates, target_col),
@@ -942,10 +985,15 @@ def predict_target(
         adjusted = apply_day29_purchase_adjustment(adjusted, predict_dates)
         adjusted = apply_day8_purchase_adjustment(adjusted, predict_dates)
     elif target_col == "redeem":
+        month_end_active = (
+            strategy != "redeem_feature_triggered_month_end"
+            or should_apply_redeem_feature_triggered_month_end(history)
+        )
         adjusted = apply_late_month_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day18_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_monday_redeem_adjustment(adjusted, predict_dates)
-        adjusted = apply_month_end_redeem_adjustment(adjusted, predict_dates)
+        if month_end_active:
+            adjusted = apply_month_end_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day10_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day6_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day8_redeem_adjustment(adjusted, predict_dates)
@@ -959,12 +1007,14 @@ def predict_target(
         adjusted = apply_day14_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day10_redeem_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_saturday_redeem_extra_adjustment(adjusted, predict_dates)
-        adjusted = apply_day24_redeem_adjustment(adjusted, predict_dates)
-        adjusted = apply_day25_to_27_redeem_adjustment(adjusted, predict_dates)
+        if strategy != "redeem_compact_month_end":
+            adjusted = apply_day24_redeem_adjustment(adjusted, predict_dates)
+            adjusted = apply_day25_to_27_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day13_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_day16_to_17_redeem_extra_adjustment(adjusted, predict_dates)
         adjusted = apply_day8_to_9_redeem_extra_adjustment(adjusted, predict_dates)
-        adjusted = apply_day30_redeem_adjustment(adjusted, predict_dates)
+        if month_end_active:
+            adjusted = apply_day30_redeem_adjustment(adjusted, predict_dates)
         adjusted = apply_quarter_end_late_redeem_adjustment(adjusted, predict_dates, history)
         adjusted = apply_quarter_end_redeem_residual_adjustment(
             adjusted, predict_dates, history
@@ -978,14 +1028,14 @@ def weighted_relative_error(y_true: pd.Series, y_pred: pd.Series) -> float:
     return float(errors.fillna(0).mean())
 
 
-def validate_august(features: pd.DataFrame) -> pd.DataFrame:
+def validate_august(features: pd.DataFrame, strategy: str = "baseline") -> pd.DataFrame:
     train = features[features["date"] < "2014-08-01"].copy()
     valid = features[
         (features["date"] >= "2014-08-01") & (features["date"] <= "2014-08-31")
     ].copy()
 
-    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase")
-    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem")
+    valid["pred_purchase"] = predict_target(train, valid["date"], "purchase", strategy)
+    valid["pred_redeem"] = predict_target(train, valid["date"], "redeem", strategy)
     valid["purchase_relative_error"] = (
         (valid["pred_purchase"] - valid["purchase"]).abs() / valid["purchase"]
     )
@@ -999,28 +1049,49 @@ def validate_august(features: pd.DataFrame) -> pd.DataFrame:
     return valid
 
 
-def predict_september(features: pd.DataFrame) -> pd.DataFrame:
+def predict_september(features: pd.DataFrame, strategy: str = "baseline") -> pd.DataFrame:
     history = features[features["date"] <= "2014-08-31"].copy()
     future = pd.DataFrame(
         {"date": pd.date_range("2014-09-01", "2014-09-30", freq="D")}
     )
     future = add_calendar_features(future)
-    future["purchase"] = predict_target(history, future["date"], "purchase")
-    future["redeem"] = predict_target(history, future["date"], "redeem")
+    future["purchase"] = predict_target(history, future["date"], "purchase", strategy)
+    future["redeem"] = predict_target(history, future["date"], "redeem", strategy)
     return future[["report_date", "purchase", "redeem"]]
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build the Tianchi funds baseline or a conservative redeem audit variant."
+    )
+    parser.add_argument(
+        "--strategy",
+        choices=[
+            "baseline",
+            "redeem_compact_month_end",
+            "redeem_feature_triggered_month_end",
+        ],
+        default="baseline",
+        help="Prediction strategy to run.",
+    )
+    parser.add_argument(
+        "--artifact-tag",
+        default="",
+        help="Optional suffix for output files, useful for side-by-side comparison.",
+    )
+    args = parser.parse_args()
+
     ensure_input_files()
     OUTPUT_DIR.mkdir(exist_ok=True)
+    paths = resolve_artifact_paths(args.artifact_tag)
 
-    print("Building daily features from raw CSV files...")
+    print(f"Building daily features from raw CSV files [{args.strategy}]...")
     features = build_daily_features()
-    features.to_csv(DAILY_FEATURES_PATH, index=False, encoding="utf-8")
+    features.to_csv(paths.daily_features, index=False, encoding="utf-8")
 
     print("Validating with August 2014 holdout...")
-    validation = validate_august(features)
-    validation.to_csv(VALIDATION_PATH, index=False, encoding="utf-8")
+    validation = validate_august(features, args.strategy)
+    validation.to_csv(paths.validation, index=False, encoding="utf-8")
 
     purchase_error = weighted_relative_error(
         validation["purchase"], validation["pred_purchase"]
@@ -1033,12 +1104,12 @@ def main() -> None:
     print(f"Weighted proxy error:           {weighted_error:.6f}")
 
     print("Predicting September 2014 submission...")
-    submission = predict_september(features)
-    submission.to_csv(SUBMISSION_PATH, index=False, header=False, encoding="utf-8")
+    submission = predict_september(features, args.strategy)
+    submission.to_csv(paths.submission, index=False, header=False, encoding="utf-8")
 
-    print(f"Saved daily features: {DAILY_FEATURES_PATH}")
-    print(f"Saved validation file: {VALIDATION_PATH}")
-    print(f"Saved submission file: {SUBMISSION_PATH}")
+    print(f"Saved daily features: {paths.daily_features}")
+    print(f"Saved validation file: {paths.validation}")
+    print(f"Saved submission file: {paths.submission}")
     print(submission.head().to_string(index=False))
 
 
