@@ -2,10 +2,13 @@
 
 ## 1. Purpose
 
-This task list is written so `/goal` can execute for a relatively long time without needing to create new plans on the fly. The runner should keep working through these tasks until either:
+This task list is designed for a longer structure-focused goal cycle.
+The runner should keep working through these tasks until either:
 
-- the target in `GOAL_PLAN.md` is reached, or
+- the stretch target in `GOAL_PLAN.md` is reached, or
 - all tasks are exhausted and the goal is ended by exhaustion.
+
+Improved structural versions may be retained along the way whenever they satisfy the keep rule in `GOAL_PLAN.md`.
 
 ## 2. Task Discipline
 
@@ -25,113 +28,95 @@ This task list is written so `/goal` can execute for a relatively long time with
 - Confirm that `GOAL_PLAN.md`, `GOAL_TASK.md`, and the existing root operation log markdown are readable.
 - Do not change code in this task.
 
-### Task 1: Re-audit the retained v3 day21 factor
+### Task 1: Redeem hotspot overlap compression
 
 Objective:
-- Verify whether the current retained `day21 = 1.28` is locally optimal under the new harder target.
-
-Read-only screening grid:
-
-```text
-1.24
-1.26
-1.30
-1.32
-```
-
-Rules:
-- Keep `day15`, `day16`, and `day22` unchanged.
-- Keep all gate thresholds unchanged.
-- Promote only one best candidate if screening suggests a realistic improvement.
-- If no candidate clears the expected hard gates, mark Task 1 exhausted.
-
-### Task 2: Re-audit the retained v3 day22 factor
-
-Objective:
-- Verify whether the current retained `day22 = 1.12` is locally optimal.
-
-Read-only screening grid:
-
-```text
-1.08
-1.10
-1.14
-1.16
-```
-
-Rules:
-- Keep `day15`, `day16`, and `day21` unchanged.
-- Promote only one best candidate.
-- If no candidate clears the expected hard gates, mark Task 2 exhausted.
-
-### Task 3: Add one more gated redeem single-day adjustment
-
-Objective:
-- If Tasks 1 and 2 do not finish the goal, audit one additional gated redeem day on top of the retained v3 structure.
-
-Allowed candidate days:
-
-```text
-day17
-day24
-day26
-day29
-```
-
-Rules:
-- Only one day may be added in this task.
-- The new day must use the same current low-variance gate style; do not invent a new model family.
-- Screening must test only a narrow factor neighborhood around 1.00 or the conservative direction implied by artifacts.
-- Promote only the single best day-factor candidate.
-- If no candidate passes expected hard gates, mark Task 3 exhausted.
-
-### Task 4: Redeem structural compression around the gated hotspot region
-
-Objective:
-- Audit whether the current gated redeem hotspot region is being slightly over-amplified by overlapping existing rules.
+- Audit whether the retained gated hotspot region around `day21/day22/day26` is being slightly over-amplified by overlapping existing redeem rules.
 
 Allowed scope:
-- one structure challenger only
-- existing redeem logic only
+- one overlap day or one overlap micro-region only
+- existing redeem rules only
 - no new signal family
 
-Examples of valid patterns:
-- suppress one overlapping broad redeem rule on exactly one gated hotspot day
-- keep all constants but change one overlap application order on one narrow redeem region
+Valid challenger examples:
+- suppress one broad redeem rule on exactly one retained gated day
+- preserve all factors but change one overlap application order on one hotspot day
+- keep one day-specific uplift while preventing one broader overlapping uplift on that same day
 
 Rules:
-- No broad redeem refactor.
-- No multi-region package change.
 - Promote only one structural challenger.
-- If no candidate clears expected hard gates, mark Task 4 exhausted.
+- If no candidate clears the keep rule, mark Task 1 exhausted.
 
-### Task 5: Purchase attribution audit and one-rule challenger
+### Task 2: Redeem gate-shape refinement with current signal style
 
 Objective:
-- If redeem-side tasks are exhausted, move to purchase attribution.
+- Audit whether the current low-variance gate is slightly too broad for the retained structure.
 
-Read-only work:
-- Rank current weighted bad days by purchase contribution.
-- Separate overprediction from underprediction.
-- Map those errors to existing purchase rules or overlaps.
-
-Allowed real-change scope:
-- one existing purchase rule constant, or
-- one existing purchase overlap or ordering compression
+Allowed scope:
+- use the same existing signal family only
+- tighten or narrow one activation condition, or
+- narrow one gated day application condition
 
 Rules:
-- No simultaneous purchase multi-rule edits.
-- No new purchase feature family.
-- Promote only one purchase challenger.
-- If no candidate clears expected hard gates, mark Task 5 exhausted.
+- No new feature family.
+- No multi-condition package refactor.
+- Promote only one challenger.
+- If no candidate clears the keep rule, mark Task 2 exhausted.
+
+### Task 3: Purchase single-overlap compression
+
+Objective:
+- Audit whether one purchase overlap region still causes structure inefficiency.
+
+Priority regions to inspect first:
+
+```text
+day29 with late-month overlap
+day4 with day3-to-4 overlap
+day30/day31 local overlap behavior
+```
+
+Rules:
+- Only one purchase overlap region may be changed.
+- No simultaneous multi-rule purchase edit.
+- Promote only one challenger.
+- If no candidate clears the keep rule, mark Task 3 exhausted.
+
+### Task 4: Purchase structure precedence cleanup
+
+Objective:
+- If Task 3 is exhausted, audit whether one existing purchase rule should take precedence over another in one narrow region.
+
+Allowed scope:
+- one precedence change only
+- existing purchase rules only
+- no new purchase model family
+
+Rules:
+- No wide purchase refactor.
+- No cross-family package change.
+- Promote only one challenger.
+- If no candidate clears the keep rule, mark Task 4 exhausted.
+
+### Task 5: Compact strategy challenger
+
+Objective:
+- If Tasks 1-4 still leave room, build one compact challenger strategy that applies exactly one retained structural idea in a clean isolated path.
+
+Rules:
+- Only one compact challenger strategy may be introduced.
+- It must reuse the current baseline model family.
+- It must stay conservative and easy to rollback.
+- Promote only one challenger.
+- If no candidate clears the keep rule, mark Task 5 exhausted.
 
 ### Task 6: Final exhaustion review
 
 Objective:
-- If Tasks 1-5 do not reach the goal, run one final read-only review across the retained and failed tagged artifacts produced during this goal cycle.
+- If Tasks 1-5 do not reach the stretch target, run one final read-only review across the retained and failed tagged artifacts produced during this goal cycle.
 
 Required output:
-- State whether any realistic conservative path still remains under the current constraints.
+- State whether any realistic conservative structural path still remains.
 - If none remains, end the goal by exhaustion.
 - Do not invent a brand-new objective to keep the goal alive.
 
@@ -151,16 +136,18 @@ python src/evaluate.py   --validation output/validation_august_2014_<tag>.csv   
 
 ## 5. Keep / Rollback Rule
 
-KEEP only if all of these hold against the current stable anchor:
+KEEP when all of the following hold against the current stable anchor:
 
 ```text
 2014-08 Decision == PASS
 2014-08 weighted_relative_error_mean does not worsen
-overall weighted_relative_error_mean does not worsen
-2014-06 weighted_relative_error_mean does not worsen
-2014-07 weighted_relative_error_mean does not worsen
 overall bad_day_rate_max does not worsen
+overall weighted_relative_error_mean improves
 ```
+
+Interpretation:
+- This goal explicitly allows keeping a version as long as it has real optimization effect on overall performance and respects the August plus bad-day floor.
+- `2014-06` and `2014-07` are review metrics, not absolute blockers for this goal, unless one of them is clearly damaged in a way that makes the improvement non-credible.
 
 After a KEEP:
 - update the existing root operation log markdown
@@ -178,7 +165,7 @@ After a ROLLBACK:
 
 End the goal when either:
 
-- the retained version reaches the primary target in `GOAL_PLAN.md`, or
-- every task above has been executed or exhausted without a compliant winner
+- a retained version reaches the stretch target in `GOAL_PLAN.md`, or
+- every task above has been executed or exhausted without a further realistic structural winner
 
-If the second case happens, explicitly mark the goal as completed by task exhaustion rather than leaving it hanging.
+If the second case happens, explicitly mark the goal as completed by task exhaustion.
