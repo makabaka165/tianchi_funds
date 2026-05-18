@@ -6,11 +6,11 @@ All work must stay on server path `/home/ecs-user/tianchi_funds`.
 Current stable branch and model anchor:
 
 ```text
-branch             = codex/redeem-day30-conservative
-doc commit         = 27ffb3f
-stable model commit= b709daa
-strategy           = redeem_low_variance_v3
-artifact tag       = redeem_low_variance_v3_day21_128_day22_112_day26_112
+branch              = codex/redeem-day30-conservative
+doc commit          = 99165b2
+stable model commit = b709daa
+stable strategy     = redeem_low_variance_v3
+stable artifact tag = redeem_low_variance_v3_day21_128_day22_112_day26_112
 ```
 
 Current stable metrics:
@@ -24,18 +24,18 @@ overall bad_day_rate_max             = 0.11382113821138211
 
 ## 2. Goal Definition
 
-This goal upgrades the interface layer rather than only the rule layer or the compact method layer.
-The purpose is to unlock new realistic candidates by allowing lightweight proxy-feature generation and a compact standalone modeling path that can still be evaluated through the existing server validation workflow.
+This goal starts a new modeling system instead of extending the old rule-stack framework.
+The purpose is to build and test one compact, independently modeled pipeline that can compete with the current stable anchor, while still using the same server-side validation and rollback discipline.
 
 Primary stretch target:
 
 ```text
-overall weighted_relative_error_mean <= 0.11750000000000000
+overall weighted_relative_error_mean <= 0.11720000000000000
 ```
 
-This is an interface-upgrade goal, not a guaranteed-target goal.
+This is a new-system goal, not a guaranteed-target goal.
 A retained candidate does not need to hit the stretch target immediately.
-Any interface-upgrade candidate may be retained if it passes the keep rule below and shows real improvement.
+Any new-system candidate may be retained if it passes the keep rule below and shows real improvement.
 
 Mandatory floor constraints for every retained version:
 
@@ -47,9 +47,9 @@ overall bad_day_rate_max             <= 0.11382113821138211
 
 Goal completion rule:
 
-- Success by stretch target: a retained version reaches `overall <= 0.11750000000000000` while keeping the mandatory floor constraints.
-- Success by retained upgrade: improved interface-upgrade versions may be kept along the way even if the stretch target is not yet reached.
-- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic interface-upgrade candidate remains, end the goal by task exhaustion.
+- Success by stretch target: a retained version reaches `overall <= 0.11720000000000000` while keeping the mandatory floor constraints.
+- Success by retained upgrade: improved new-system versions may be kept along the way even if the stretch target is not yet reached.
+- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic new-system candidate remains, end the goal by task exhaustion.
 
 ## 3. Keep Rule For This Goal
 
@@ -66,7 +66,7 @@ Additional guidance:
 
 - `2014-06` and `2014-07` remain review metrics, not absolute blockers by default.
 - Do not keep a candidate that clearly destabilizes one month just to gain a trivial overall delta.
-- Prefer upgrades that improve future modeling headroom, not only tiny numeric wins.
+- Prefer upgrades that create future modeling headroom, not only tiny numeric wins.
 
 ## 4. Hard Execution Constraints
 
@@ -83,30 +83,15 @@ Additional guidance:
 - Commit and push only when the keep rule passes.
 - Restore generic untagged outputs before commit if they were refreshed.
 
-## 5. Goal-Mode Operating Pattern
+## 5. Allowed New-System Scope
 
-Each execution round must follow this order:
+This goal explicitly allows creating a small new modeling subsystem, including:
 
-```text
-1. Read current stable metrics and latest retained artifacts.
-2. Perform read-only attribution, proxy-feature feasibility review, or narrow offline screening.
-3. Select one unique candidate only.
-4. Edit server code for that one candidate.
-5. Run tagged baseline validation, rolling validation, and evaluate report.
-6. Compare with current stable keep rule.
-7. KEEP: retain code, update the root operation log markdown, commit, push, and move the stable anchor.
-8. ROLLBACK: restore previous stable code, keep tagged artifacts, update the root operation log markdown, and do not commit failed code.
-```
-
-## 6. Allowed Interface-Upgrade Space
-
-The goal should prefer these directions in order:
-
-1. Proxy-feature generation for future-known calendar or recent-history-derived signals that remain legal at prediction time
-2. A compact standalone modeling path that trains on daily features and predicts purchase or redeem through a separate strategy path
-3. A two-stage pipeline where stable rule predictions are used as base features for a lightweight second stage
-4. A lightweight monthly or rolling calibration layer fed by proxy features rather than unavailable future fields
-5. A minimal ensemble between the stable rule strategy and one new standalone interface-upgrade challenger
+1. new Python modules under `src/` for feature assembly, training, inference, or calibration
+2. one compact training/prediction entry path integrated with the existing artifact-tag workflow
+3. separate purchase and redeem models if needed
+4. lightweight proxy features and rolling-history features that are legal at prediction time
+5. one compact blending layer between the new system and the stable anchor if justified
 
 The goal should avoid these directions unless all listed tasks are exhausted:
 
@@ -115,3 +100,18 @@ The goal should avoid these directions unless all listed tasks are exhausted:
 - broad hyperparameter search in one round
 - simultaneous multi-family experiments in one round
 - undocumented ad hoc interface changes without tagged validation
+
+## 6. Goal-Mode Operating Pattern
+
+Each execution round must follow this order:
+
+```text
+1. Read current stable metrics and latest retained artifacts.
+2. Perform read-only feasibility review, feature audit, or narrow offline screening.
+3. Select one unique candidate only.
+4. Edit server code for that one candidate.
+5. Run tagged baseline validation, rolling validation, and evaluate report.
+6. Compare with current stable keep rule.
+7. KEEP: retain code, update the root operation log markdown, commit, push, and move the stable anchor.
+8. ROLLBACK: restore previous stable code, keep tagged artifacts, update the root operation log markdown, and do not commit failed code.
+```
