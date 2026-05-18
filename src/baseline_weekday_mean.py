@@ -123,6 +123,7 @@ REDEEM_LOW_VARIANCE_V2_DAY15_FACTOR = 0.68
 REDEEM_LOW_VARIANCE_V2_DAY16_FACTOR = 0.74
 REDEEM_LOW_VARIANCE_V3_DAY21_FACTOR = 1.28
 REDEEM_LOW_VARIANCE_V3_DAY22_FACTOR = 1.12
+REDEEM_LOW_VARIANCE_V3_DAY26_FACTOR = 1.12
 
 HOLIDAY_DATES = {
     "2014-05-01",
@@ -1000,6 +1001,17 @@ def apply_day22_redeem_low_variance_v3_adjustment(
     return adjusted.round().clip(lower=0).astype("int64")
 
 
+def apply_day26_redeem_low_variance_v3_adjustment(
+    predictions: pd.Series,
+    predict_dates: pd.Series,
+) -> pd.Series:
+    adjusted = predictions.astype(float).copy()
+    for idx, date in predict_dates.items():
+        if pd.Timestamp(date).day == 26:
+            adjusted.loc[idx] *= REDEEM_LOW_VARIANCE_V3_DAY26_FACTOR
+    return adjusted.round().clip(lower=0).astype("int64")
+
+
 def predict_target(
     history: pd.DataFrame,
     predict_dates: pd.Series,
@@ -1100,6 +1112,9 @@ def predict_target(
                         adjusted, predict_dates
                     )
                     adjusted = apply_day22_redeem_low_variance_v3_adjustment(
+                        adjusted, predict_dates
+                    )
+                    adjusted = apply_day26_redeem_low_variance_v3_adjustment(
                         adjusted, predict_dates
                     )
     return adjusted
