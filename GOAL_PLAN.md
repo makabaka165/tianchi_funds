@@ -7,7 +7,7 @@ Current stable branch and model anchor:
 
 ```text
 branch             = codex/redeem-day30-conservative
-doc commit         = 22b3138
+doc commit         = 27ffb3f
 stable model commit= b709daa
 strategy           = redeem_low_variance_v3
 artifact tag       = redeem_low_variance_v3_day21_128_day22_112_day26_112
@@ -24,18 +24,18 @@ overall bad_day_rate_max             = 0.11382113821138211
 
 ## 2. Goal Definition
 
-This goal switches away from rule micro-tuning and conservative overlap cleanup.
-The purpose is to test one-step method upgrades that can plausibly beat the current rule stack when the existing structure space is already exhausted.
+This goal upgrades the interface layer rather than only the rule layer or the compact method layer.
+The purpose is to unlock new realistic candidates by allowing lightweight proxy-feature generation and a compact standalone modeling path that can still be evaluated through the existing server validation workflow.
 
 Primary stretch target:
 
 ```text
-overall weighted_relative_error_mean <= 0.11780000000000000
+overall weighted_relative_error_mean <= 0.11750000000000000
 ```
 
-This is a method-upgrade goal, not a guaranteed-target goal.
+This is an interface-upgrade goal, not a guaranteed-target goal.
 A retained candidate does not need to hit the stretch target immediately.
-Any method-upgrade candidate may be retained if it passes the keep rule below and shows real improvement.
+Any interface-upgrade candidate may be retained if it passes the keep rule below and shows real improvement.
 
 Mandatory floor constraints for every retained version:
 
@@ -47,9 +47,9 @@ overall bad_day_rate_max             <= 0.11382113821138211
 
 Goal completion rule:
 
-- Success by stretch target: a retained version reaches `overall <= 0.11780000000000000` while keeping the mandatory floor constraints.
-- Success by retained upgrade: improved method-upgrade versions may be kept along the way even if the stretch target is not yet reached.
-- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic method-upgrade candidate remains, end the goal by task exhaustion.
+- Success by stretch target: a retained version reaches `overall <= 0.11750000000000000` while keeping the mandatory floor constraints.
+- Success by retained upgrade: improved interface-upgrade versions may be kept along the way even if the stretch target is not yet reached.
+- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic interface-upgrade candidate remains, end the goal by task exhaustion.
 
 ## 3. Keep Rule For This Goal
 
@@ -66,7 +66,7 @@ Additional guidance:
 
 - `2014-06` and `2014-07` remain review metrics, not absolute blockers by default.
 - Do not keep a candidate that clearly destabilizes one month just to gain a trivial overall delta.
-- Prefer upgrades that improve method quality and future headroom, not only tiny numeric wins.
+- Prefer upgrades that improve future modeling headroom, not only tiny numeric wins.
 
 ## 4. Hard Execution Constraints
 
@@ -89,7 +89,7 @@ Each execution round must follow this order:
 
 ```text
 1. Read current stable metrics and latest retained artifacts.
-2. Perform read-only attribution, simulation, or narrow offline screening.
+2. Perform read-only attribution, proxy-feature feasibility review, or narrow offline screening.
 3. Select one unique candidate only.
 4. Edit server code for that one candidate.
 5. Run tagged baseline validation, rolling validation, and evaluate report.
@@ -98,20 +98,20 @@ Each execution round must follow this order:
 8. ROLLBACK: restore previous stable code, keep tagged artifacts, update the root operation log markdown, and do not commit failed code.
 ```
 
-## 6. Allowed Method-Upgrade Space
+## 6. Allowed Interface-Upgrade Space
 
 The goal should prefer these directions in order:
 
-1. Residual-correction upgrade on top of the current stable baseline using only history-visible features
-2. Two-stage modeling: base rule prediction plus small redeem or purchase residual correction
-3. Lightweight split modeling for purchase and redeem with existing daily features
-4. Conservative linear or tree-based challenger that produces predictions through the existing evaluation path
-5. Compact ensemble between the current stable strategy and one upgraded challenger
+1. Proxy-feature generation for future-known calendar or recent-history-derived signals that remain legal at prediction time
+2. A compact standalone modeling path that trains on daily features and predicts purchase or redeem through a separate strategy path
+3. A two-stage pipeline where stable rule predictions are used as base features for a lightweight second stage
+4. A lightweight monthly or rolling calibration layer fed by proxy features rather than unavailable future fields
+5. A minimal ensemble between the stable rule strategy and one new standalone interface-upgrade challenger
 
 The goal should avoid these directions unless all listed tasks are exhausted:
 
 - giant model sweeps
 - heavy deep learning stacks
-- large hyperparameter grids in one round
+- broad hyperparameter search in one round
 - simultaneous multi-family experiments in one round
-- undocumented ad hoc modeling changes without tagged validation
+- undocumented ad hoc interface changes without tagged validation
