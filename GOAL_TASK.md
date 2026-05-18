@@ -2,13 +2,13 @@
 
 ## 1. Purpose
 
-This task list is designed for a longer structure-focused goal cycle.
-The runner should keep working through these tasks until either:
+This task list is designed for a method-upgrade goal cycle after rule-level and conservative structure-level spaces have already been exhausted.
+The runner should keep working until either:
 
 - the stretch target in `GOAL_PLAN.md` is reached, or
 - all tasks are exhausted and the goal is ended by exhaustion.
 
-Improved structural versions may be retained along the way whenever they satisfy the keep rule in `GOAL_PLAN.md`.
+Improved method-upgrade versions may be retained along the way whenever they satisfy the keep rule in `GOAL_PLAN.md`.
 
 ## 2. Task Discipline
 
@@ -18,105 +18,102 @@ Improved structural versions may be retained along the way whenever they satisfy
 - After every real validation, compare against the current stable anchor, not an older anchor.
 - When a candidate is retained, that retained version becomes the new stable anchor for the next task.
 - If a task has no realistic candidate after screening, mark it exhausted and move on.
+- Reuse the existing evaluation pipeline and artifact-tag workflow.
 
 ## 3. Execution Tasks
 
-### Task 0: Baseline lock and artifact audit
+### Task 0: Baseline lock and feature audit
 
 - Confirm branch, head, and clean worktree.
 - Confirm the current stable anchor metrics from the latest retained tagged artifacts.
 - Confirm that `GOAL_PLAN.md`, `GOAL_TASK.md`, and the existing root operation log markdown are readable.
+- Audit the available daily feature columns and current strategy interfaces before making a new method candidate.
 - Do not change code in this task.
 
-### Task 1: Redeem hotspot overlap compression
+### Task 1: Offline residual-attribution audit
 
 Objective:
-- Audit whether the retained gated hotspot region around `day21/day22/day26` is being slightly over-amplified by overlapping existing redeem rules.
+- Identify whether the remaining error is better explained by redeem residuals, purchase residuals, or a mixed residual pattern.
 
-Allowed scope:
-- one overlap day or one overlap micro-region only
-- existing redeem rules only
-- no new signal family
+Read-only work:
+- Rank worst days and worst months by residual direction.
+- Check whether errors cluster by weekday, day-of-month, month-end distance, user-per-capita features, or yield features.
+- Determine which one upgrade family has the strongest evidence.
 
-Valid challenger examples:
-- suppress one broad redeem rule on exactly one retained gated day
-- preserve all factors but change one overlap application order on one hotspot day
-- keep one day-specific uplift while preventing one broader overlapping uplift on that same day
+Output requirement:
+- Select exactly one upgrade family to pursue in Task 2.
+- If no credible family emerges, mark Task 1 exhausted and move to Task 5 final review.
 
-Rules:
-- Promote only one structural challenger.
-- If no candidate clears the keep rule, mark Task 1 exhausted.
-
-### Task 2: Redeem gate-shape refinement with current signal style
+### Task 2: Single residual-correction challenger
 
 Objective:
-- Audit whether the current low-variance gate is slightly too broad for the retained structure.
+- Build one challenger that keeps the current stable rule prediction as base output and applies one conservative residual correction layer.
 
-Allowed scope:
-- use the same existing signal family only
-- tighten or narrow one activation condition, or
-- narrow one gated day application condition
+Allowed candidate forms:
+- linear residual correction
+- ridge or lasso style residual correction
+- one small tree-based residual correction with conservative settings
 
 Rules:
-- No new feature family.
-- No multi-condition package refactor.
-- Promote only one challenger.
+- Only one residual model family may be tested in this task.
+- Prefer one target side first: redeem-only or purchase-only, unless the read-only audit strongly supports both.
+- Keep the implementation compact and easy to rollback.
+- Promote only one candidate into real validation.
 - If no candidate clears the keep rule, mark Task 2 exhausted.
 
-### Task 3: Purchase single-overlap compression
+### Task 3: Split modeling challenger
 
 Objective:
-- Audit whether one purchase overlap region still causes structure inefficiency.
+- If Task 2 is exhausted, test one compact split-model challenger.
 
-Priority regions to inspect first:
-
-```text
-day29 with late-month overlap
-day4 with day3-to-4 overlap
-day30/day31 local overlap behavior
-```
+Allowed forms:
+- separate purchase and redeem models sharing the same feature table
+- one lightweight model per target with conservative defaults
+- predictions must still flow through the existing output and validation interface
 
 Rules:
-- Only one purchase overlap region may be changed.
-- No simultaneous multi-rule purchase edit.
-- Promote only one challenger.
+- Only one split-model candidate may be validated.
+- No broad model family sweep.
+- No giant feature engineering package.
 - If no candidate clears the keep rule, mark Task 3 exhausted.
 
-### Task 4: Purchase structure precedence cleanup
+### Task 4: Conservative blend or ensemble challenger
 
 Objective:
-- If Task 3 is exhausted, audit whether one existing purchase rule should take precedence over another in one narrow region.
+- If Tasks 2 and 3 are exhausted, test whether a conservative blend between the stable rule strategy and one method-upgrade challenger is keep-worthy.
 
-Allowed scope:
-- one precedence change only
-- existing purchase rules only
-- no new purchase model family
+Allowed forms:
+- weighted blend of stable predictions and one challenger prediction
+- one fixed blending rule only
+- no adaptive ensemble package
 
 Rules:
-- No wide purchase refactor.
-- No cross-family package change.
-- Promote only one challenger.
+- Blend only one challenger with the current stable anchor.
+- Promote only one blend candidate.
 - If no candidate clears the keep rule, mark Task 4 exhausted.
 
-### Task 5: Compact strategy challenger
+### Task 5: Compact method cleanup challenger
 
 Objective:
-- If Tasks 1-4 still leave room, build one compact challenger strategy that applies exactly one retained structural idea in a clean isolated path.
+- If Tasks 2-4 still leave room, test one compact cleanup improvement inside the chosen best method family.
+
+Allowed scope:
+- one narrow preprocessing fix, or
+- one narrow target-specific calibration, or
+- one narrow prediction clipping / shrinkage rule
 
 Rules:
-- Only one compact challenger strategy may be introduced.
-- It must reuse the current baseline model family.
-- It must stay conservative and easy to rollback.
-- Promote only one challenger.
+- Only one cleanup candidate may be promoted.
+- Do not reopen broad search.
 - If no candidate clears the keep rule, mark Task 5 exhausted.
 
 ### Task 6: Final exhaustion review
 
 Objective:
-- If Tasks 1-5 do not reach the stretch target, run one final read-only review across the retained and failed tagged artifacts produced during this goal cycle.
+- If Tasks 1-5 do not reach the stretch target, run one final read-only review across retained and failed tagged artifacts from this goal cycle.
 
 Required output:
-- State whether any realistic conservative structural path still remains.
+- State whether any realistic method-upgrade path still remains under current constraints.
 - If none remains, end the goal by exhaustion.
 - Do not invent a brand-new objective to keep the goal alive.
 
@@ -134,6 +131,8 @@ python src/rolling_validate.py --strategy <strategy> --artifact-tag <tag>
 python src/evaluate.py   --validation output/validation_august_2014_<tag>.csv   --submission output/tc_comp_predict_table_<tag>.csv   --report output/evaluation_report_<tag>.json
 ```
 
+If a challenger needs a new strategy name, extend the existing CLI choices rather than creating a separate ad hoc script interface unless that is clearly cleaner and still conservative.
+
 ## 5. Keep / Rollback Rule
 
 KEEP when all of the following hold against the current stable anchor:
@@ -146,8 +145,8 @@ overall weighted_relative_error_mean improves
 ```
 
 Interpretation:
-- This goal explicitly allows keeping a version as long as it has real optimization effect on overall performance and respects the August plus bad-day floor.
-- `2014-06` and `2014-07` are review metrics, not absolute blockers for this goal, unless one of them is clearly damaged in a way that makes the improvement non-credible.
+- This goal allows keeping a version whenever the method-upgrade effect is real under the server metric and the August plus bad-day floor is preserved.
+- `2014-06` and `2014-07` are review metrics, not absolute blockers, unless one month is clearly destabilized.
 
 After a KEEP:
 - update the existing root operation log markdown
@@ -166,6 +165,6 @@ After a ROLLBACK:
 End the goal when either:
 
 - a retained version reaches the stretch target in `GOAL_PLAN.md`, or
-- every task above has been executed or exhausted without a further realistic structural winner
+- every task above has been executed or exhausted without a further realistic method-upgrade winner
 
 If the second case happens, explicitly mark the goal as completed by task exhaustion.

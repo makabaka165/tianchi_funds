@@ -3,40 +3,39 @@
 ## 1. Current Stable Baseline
 
 All work must stay on server path `/home/ecs-user/tianchi_funds`.
-Current stable branch and commit:
+Current stable branch and model anchor:
 
 ```text
-branch        = codex/redeem-day30-conservative
-stable commit = b709daa
-strategy      = redeem_low_variance_v3
-artifact tag  = redeem_low_variance_v3_day21_128_day22_112_day26_112
+branch             = codex/redeem-day30-conservative
+doc commit         = 22b3138
+stable model commit= b709daa
+strategy           = redeem_low_variance_v3
+artifact tag       = redeem_low_variance_v3_day21_128_day22_112_day26_112
 ```
 
 Current stable metrics:
 
 ```text
-2014-08 weighted_relative_error_mean = 0.11724453093435727
 overall weighted_relative_error_mean = 0.11831606502050732
-2014-06 weighted_relative_error_mean = 0.11407620724007135
-2014-07 weighted_relative_error_mean = 0.11991147614877315
+2014-08 weighted_relative_error_mean = 0.11724453093435727
 overall bad_day_rate_max             = 0.11382113821138211
 2014-08 Decision                     = PASS
 ```
 
 ## 2. Goal Definition
 
-This goal is no longer a last-digit micro-tuning goal.
-It is a higher-level structure-upgrade goal.
-The purpose is to spend multiple rounds testing conservative structural challengers and keep any retained structural version that produces real improvement under the server evaluation standard.
+This goal switches away from rule micro-tuning and conservative overlap cleanup.
+The purpose is to test one-step method upgrades that can plausibly beat the current rule stack when the existing structure space is already exhausted.
 
 Primary stretch target:
 
 ```text
-overall weighted_relative_error_mean <= 0.11810000000000000
+overall weighted_relative_error_mean <= 0.11780000000000000
 ```
 
-However, this goal does not require hitting the stretch target in order to keep progress.
-A structural candidate may be retained whenever it produces clear optimization effect under the keep rule defined below.
+This is a method-upgrade goal, not a guaranteed-target goal.
+A retained candidate does not need to hit the stretch target immediately.
+Any method-upgrade candidate may be retained if it passes the keep rule below and shows real improvement.
 
 Mandatory floor constraints for every retained version:
 
@@ -48,14 +47,13 @@ overall bad_day_rate_max             <= 0.11382113821138211
 
 Goal completion rule:
 
-- Success by stretch target: a retained version reaches `overall <= 0.11810000000000000` while keeping the mandatory floor constraints.
-- Success by retained structural improvement: the goal may keep improved structural versions along the way even if the stretch target is not reached yet.
-- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic structural candidate remains, end the goal by task exhaustion.
+- Success by stretch target: a retained version reaches `overall <= 0.11780000000000000` while keeping the mandatory floor constraints.
+- Success by retained upgrade: improved method-upgrade versions may be kept along the way even if the stretch target is not yet reached.
+- Exhaustion exit: if every task in `GOAL_TASK.md` has been executed or explicitly exhausted and no further realistic method-upgrade candidate remains, end the goal by task exhaustion.
 
 ## 3. Keep Rule For This Goal
 
-This goal uses a more practical retention rule than the previous strict-all-metrics goal.
-A candidate is allowed to KEEP when all of the following hold:
+KEEP a candidate when all of the following hold against the current stable anchor:
 
 ```text
 1. 2014-08 Decision == PASS
@@ -66,9 +64,9 @@ A candidate is allowed to KEEP when all of the following hold:
 
 Additional guidance:
 
-- A small regression in `2014-06` or `2014-07` is allowed if the candidate still improves overall and respects the mandatory floor constraints above.
-- Do not keep a candidate that materially damages one month just to gain a tiny overall improvement.
-- Prefer candidates that improve both overall and structure robustness, not just the smallest numerical delta.
+- `2014-06` and `2014-07` remain review metrics, not absolute blockers by default.
+- Do not keep a candidate that clearly destabilizes one month just to gain a trivial overall delta.
+- Prefer upgrades that improve method quality and future headroom, not only tiny numeric wins.
 
 ## 4. Hard Execution Constraints
 
@@ -91,7 +89,7 @@ Each execution round must follow this order:
 
 ```text
 1. Read current stable metrics and latest retained artifacts.
-2. Perform read-only attribution, simulation, or narrow screening.
+2. Perform read-only attribution, simulation, or narrow offline screening.
 3. Select one unique candidate only.
 4. Edit server code for that one candidate.
 5. Run tagged baseline validation, rolling validation, and evaluate report.
@@ -100,20 +98,20 @@ Each execution round must follow this order:
 8. ROLLBACK: restore previous stable code, keep tagged artifacts, update the root operation log markdown, and do not commit failed code.
 ```
 
-## 6. Allowed Optimization Space
+## 6. Allowed Method-Upgrade Space
 
-The goal should prefer these structural directions in order:
+The goal should prefer these directions in order:
 
-1. Redeem hotspot overlap compression around the retained gated days
-2. Redeem gate-shape refinement using existing signal style only
-3. Purchase overlap precedence compression on one narrow region
-4. Purchase month-end or local weekday overlap cleanup using existing rules only
-5. One compact strategy challenger that changes structure but not model family
+1. Residual-correction upgrade on top of the current stable baseline using only history-visible features
+2. Two-stage modeling: base rule prediction plus small redeem or purchase residual correction
+3. Lightweight split modeling for purchase and redeem with existing daily features
+4. Conservative linear or tree-based challenger that produces predictions through the existing evaluation path
+5. Compact ensemble between the current stable strategy and one upgraded challenger
 
 The goal should avoid these directions unless all listed tasks are exhausted:
 
-- brand-new model families
-- broad multi-parameter sweeps in one round
-- simultaneous purchase and redeem multi-variable edits
-- undocumented ad hoc changes without tagged validation
-- reverting to trivial last-digit-only constant chasing as the main line
+- giant model sweeps
+- heavy deep learning stacks
+- large hyperparameter grids in one round
+- simultaneous multi-family experiments in one round
+- undocumented ad hoc modeling changes without tagged validation
