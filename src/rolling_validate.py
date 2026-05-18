@@ -191,6 +191,7 @@ def parse_args() -> argparse.Namespace:
             "redeem_feature_triggered_month_end",
             "redeem_low_variance_v1",
             "redeem_low_variance_v2",
+            "redeem_low_variance_v3",
         ],
         default="baseline",
         help="Prediction strategy to evaluate.",
