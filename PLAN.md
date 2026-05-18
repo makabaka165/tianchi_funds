@@ -67,4 +67,4 @@ That means:
 - a fresh validation standard review
 - explicit acceptance that the old compact extension path is already exhausted
 
-See `??????????.md` for the closure summary and recommended re-entry conditions.
+See `CLOSURE_SUMMARY.md` for the closure summary and recommended re-entry conditions.
