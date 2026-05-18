@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This task list is written so `/goal` can spend a long time executing and iterating without needing to create plans on the fly. The goal runner should keep working through these tasks until either:
+This task list is written so `/goal` can execute for a relatively long time without needing to create new plans on the fly. The runner should keep working through these tasks until either:
 
 - the target in `GOAL_PLAN.md` is reached, or
 - all tasks are exhausted and the goal is ended by exhaustion.
@@ -11,9 +11,10 @@ This task list is written so `/goal` can spend a long time executing and iterati
 
 - Every task must start with read-only analysis.
 - Every task may promote at most one candidate into real validation.
-- Do not skip directly to code edits just because a candidate looks plausible.
+- Do not jump directly to code edits just because a candidate looks plausible.
 - After every real validation, compare against the current stable anchor, not an older anchor.
 - When a candidate is retained, that retained version becomes the new stable anchor for the next task.
+- If a task has no realistic candidate after screening, mark it exhausted and move on.
 
 ## 3. Execution Tasks
 
@@ -21,39 +22,57 @@ This task list is written so `/goal` can spend a long time executing and iterati
 
 - Confirm branch, head, and clean worktree.
 - Confirm the current stable anchor metrics from the latest retained tagged artifacts.
-- Confirm that `GOAL_PLAN.md`, `GOAL_TASK.md`, and `????.md` are readable.
+- Confirm that `GOAL_PLAN.md`, `GOAL_TASK.md`, and the existing root operation log markdown are readable.
 - Do not change code in this task.
 
-### Task 1: Retune v3 day21 factor in a narrow neighborhood
+### Task 1: Re-audit the retained v3 day21 factor
 
 Objective:
-- Audit whether the current `REDEEM_LOW_VARIANCE_V3_DAY21_FACTOR = 1.20` is locally optimal.
+- Verify whether the current retained `day21 = 1.28` is locally optimal under the new harder target.
 
 Read-only screening grid:
 
 ```text
-1.12
-1.16
 1.24
-1.28
+1.26
+1.30
+1.32
 ```
 
 Rules:
-- Keep `day15/day16` unchanged.
-- Keep gate thresholds unchanged.
-- Only promote one best candidate if read-only screening suggests it can improve the current stable anchor.
-- If no candidate clears the expected gates, mark Task 1 exhausted and keep the current stable version unchanged.
+- Keep `day15`, `day16`, and `day22` unchanged.
+- Keep all gate thresholds unchanged.
+- Promote only one best candidate if screening suggests a realistic improvement.
+- If no candidate clears the expected hard gates, mark Task 1 exhausted.
 
-### Task 2: Add one more gated redeem single-day adjustment to v3
+### Task 2: Re-audit the retained v3 day22 factor
 
 Objective:
-- If Task 1 does not finish the goal, audit one additional gated redeem day on top of v3.
+- Verify whether the current retained `day22 = 1.12` is locally optimal.
+
+Read-only screening grid:
+
+```text
+1.08
+1.10
+1.14
+1.16
+```
+
+Rules:
+- Keep `day15`, `day16`, and `day21` unchanged.
+- Promote only one best candidate.
+- If no candidate clears the expected hard gates, mark Task 2 exhausted.
+
+### Task 3: Add one more gated redeem single-day adjustment
+
+Objective:
+- If Tasks 1 and 2 do not finish the goal, audit one additional gated redeem day on top of the retained v3 structure.
 
 Allowed candidate days:
 
 ```text
 day17
-day22
 day24
 day26
 day29
@@ -61,15 +80,35 @@ day29
 
 Rules:
 - Only one day may be added in this task.
-- The new day must use the same existing low-variance gate style; do not invent a new model.
-- Screening must test a narrow factor neighborhood around 1.00 or the logically conservative direction inferred from artifacts.
+- The new day must use the same current low-variance gate style; do not invent a new model family.
+- Screening must test only a narrow factor neighborhood around 1.00 or the conservative direction implied by artifacts.
 - Promote only the single best day-factor candidate.
-- If no candidate passes expected gates, mark Task 2 exhausted.
+- If no candidate passes expected hard gates, mark Task 3 exhausted.
 
-### Task 3: Purchase attribution audit and one-rule challenger
+### Task 4: Redeem structural compression around the gated hotspot region
 
 Objective:
-- If redeem-side gated extensions are exhausted, move to purchase attribution.
+- Audit whether the current gated redeem hotspot region is being slightly over-amplified by overlapping existing rules.
+
+Allowed scope:
+- one structure challenger only
+- existing redeem logic only
+- no new signal family
+
+Examples of valid patterns:
+- suppress one overlapping broad redeem rule on exactly one gated hotspot day
+- keep all constants but change one overlap application order on one narrow redeem region
+
+Rules:
+- No broad redeem refactor.
+- No multi-region package change.
+- Promote only one structural challenger.
+- If no candidate clears expected hard gates, mark Task 4 exhausted.
+
+### Task 5: Purchase attribution audit and one-rule challenger
+
+Objective:
+- If redeem-side tasks are exhausted, move to purchase attribution.
 
 Read-only work:
 - Rank current weighted bad days by purchase contribution.
@@ -77,42 +116,24 @@ Read-only work:
 - Map those errors to existing purchase rules or overlaps.
 
 Allowed real-change scope:
-- One existing purchase rule constant, or
-- one existing purchase overlap/ordering compression
+- one existing purchase rule constant, or
+- one existing purchase overlap or ordering compression
 
 Rules:
 - No simultaneous purchase multi-rule edits.
 - No new purchase feature family.
-- Promote only one purchase challenger into real validation.
-- If no candidate clears expected gates, mark Task 3 exhausted.
+- Promote only one purchase challenger.
+- If no candidate clears expected hard gates, mark Task 5 exhausted.
 
-### Task 4: Conservative rule-order compression
-
-Objective:
-- If Task 3 still leaves room, audit whether one existing overlap region is still being double-amplified.
-
-Allowed scope:
-- one overlap region only
-- one strategy challenger only
-- existing rule set only
-
-Examples of valid patterns:
-- keep one day-specific rule and suppress one overlapping broad rule on that day
-- preserve all constants while changing only overlap application on a single day group
-
-Rules:
-- No broad refactor.
-- No simultaneous purchase+redeem structural package.
-- Promote only one candidate.
-
-### Task 5: Final exhaustion pass
+### Task 6: Final exhaustion review
 
 Objective:
-- If Tasks 1-4 do not reach the goal, run one final read-only review across all recent retained and failed artifacts.
+- If Tasks 1-5 do not reach the goal, run one final read-only review across the retained and failed tagged artifacts produced during this goal cycle.
 
-Output requirement:
-- State whether any realistic conservative path still remains.
-- If none remains under the current constraints, end the goal by exhaustion.
+Required output:
+- State whether any realistic conservative path still remains under the current constraints.
+- If none remains, end the goal by exhaustion.
+- Do not invent a brand-new objective to keep the goal alive.
 
 ## 4. Real Validation Commands
 
@@ -142,15 +163,15 @@ overall bad_day_rate_max does not worsen
 ```
 
 After a KEEP:
-- update `????.md`
-- commit only the retained code plus the record update
+- update the existing root operation log markdown
+- commit only the retained code plus the log update
 - push through server git
 - redefine the stable anchor for the next task
 
 After a ROLLBACK:
 - restore prior stable code immediately
 - keep tagged artifacts
-- update `????.md`
+- update the existing root operation log markdown
 - do not commit failed code
 
 ## 6. Goal-End Rule
